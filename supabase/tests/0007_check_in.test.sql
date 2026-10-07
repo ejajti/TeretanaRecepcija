@@ -1,6 +1,6 @@
 -- M-07: check-in and check-out. Every row of the BR-070 table, the worked examples E3,
 -- E6, E7 and E8 end to end, and BR-071 to BR-081.
-select plan(52);
+select plan(53);
 
 -- Fixtures --------------------------------------------------------------------------
 insert into auth.users (id, email) values
@@ -202,19 +202,26 @@ select throws_ok(
   $$select begin_check_in('77777777-0000-0000-0000-000000020001')$$,
   'P0001', 'E_MEMBER_HAS_OPEN_VISIT', 'BR-071: the manual start refuses too');
 
--- BR-074: two candidates -> S-03a with the earliest-ending one first -----------------------
-select is(begin_check_in('77777777-0000-0000-0000-000000020002') ->> 'result', 'choose',
-  'US-04.3 AC3: two covering memberships need the selector');
+-- BR-074: two candidates, the earliest-ending one first ----------------------------------
+-- Since D-102 a scan takes it without asking (0033); S-03a still offers the others.
+select is(begin_check_in('77777777-0000-0000-0000-000000020002') ->> 'result', 'checked_in',
+  'D-102: two covering gym memberships no longer need the selector');
 select is(
-  (begin_check_in('77777777-0000-0000-0000-000000020002') -> 'options' -> 'candidates' -> 'gym' -> 0 ->> 'id'),
-  '77777777-0000-0000-0000-000000030003',
-  'BR-074: the earliest-ending candidate comes first (the preselection)');
+  (select membership_id from visits where member_id = '77777777-0000-0000-0000-000000020002'
+   and checked_out_at is null),
+  '77777777-0000-0000-0000-000000030003'::uuid,
+  'BR-074: the earliest-ending candidate is the default');
+select lives_ok(
+  $$select check_out((select id from visits where member_id = '77777777-0000-0000-0000-000000020002'
+                      and checked_out_at is null), true)$$,
+  'BR-074: checked out in between');
 select is(
   (check_in('77777777-0000-0000-0000-000000020002', 'gym', '77777777-0000-0000-0000-000000030002',
             null, null, false) ->> 'covered')::boolean,
-  true, 'BR-074: the receptionist may pick another candidate');
+  true, 'BR-074: on S-03a the receptionist may pick another candidate');
 select is(
-  (select membership_id from visits where member_id = '77777777-0000-0000-0000-000000020002'),
+  (select membership_id from visits where member_id = '77777777-0000-0000-0000-000000020002'
+   and checked_out_at is null),
   '77777777-0000-0000-0000-000000030002'::uuid, 'BR-074: the visit is linked to the one picked');
 
 -- E6: Mjesečna 12 termina, two visits the same day ----------------------------------------------
@@ -260,10 +267,13 @@ select is(
   (check_in('77777777-0000-0000-0000-000000020004', 'gym', null, null, null, false) ->> 'covered')::boolean,
   true, 'E7: picking Teretana is covered');
 
--- E8: Grupni-only member picks Teretana ------------------------------------------------------------
+-- E8: Grupni-only member picks Teretana on S-03a ---------------------------------------------------
+-- Since D-102 a scan of a Grupni-only member asks nothing (0033); S-03a is checked directly.
+reset role;
 select is(
-  (begin_check_in('77777777-0000-0000-0000-000000020005') -> 'options' ->> 'preselect'),
-  'group', 'BR-073: without gym coverage, Grupni is preselected');
+  (check_in_options('77777777-0000-0000-0000-000000020005') ->> 'preselect'),
+  'group', 'BR-073: without gym coverage, S-03a preselects Grupni');
+set local role authenticated;
 select is(
   (check_in('77777777-0000-0000-0000-000000020005', 'gym', null, null, null, false) ->> 'unpaid_count')::int,
   1, 'E8 and BR-078: an unpaid gym visit, N = 1 (yellow dialog)');

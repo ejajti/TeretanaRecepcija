@@ -10,7 +10,8 @@ import {
 
 // D-101: S-05 Novi član takes only the gym's fixed part of a Personalni sale. D-100 (BR-056):
 // S-07 pauses a membership, [Prekini pauzu] ends it, and a scan on a paused day ends
-// it too. Everything lives in this test's own gym, which afterAll removes.
+// it too (and, since D-102, checks the Personalni-only member in without a question).
+// Everything lives in this test's own gym, which afterAll removes.
 test.describe.configure({ mode: "serial" });
 
 const PASSWORD = "pauzalozinka1";
@@ -357,7 +358,9 @@ test("D-100: a scan on a paused day ends the pause", async ({ page }) => {
     page.getByText("Pauza članarine je završena jer je član došao.").first(),
   ).toBeVisible({ timeout: 15_000 });
 
-  // Personalni asks for the visit type (S-03a); the pause is already over by then.
+  // D-102: Personalni only is checked in at once (green), on the membership the pause
+  // gave back.
+  await expect(page.locator("[data-result=covered]")).toBeVisible();
   await page.keyboard.press("Escape");
   const { data: pause } = await admin
     .from("membership_pauses")

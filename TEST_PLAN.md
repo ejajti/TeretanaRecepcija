@@ -1127,6 +1127,24 @@ Legenda: svaki test ima polje za rezultat. Popunjavajte ga dok radite.
 - **Gdje provjeriti:** UI, Network tab (POST server akcije)
 - [x] Prošlo  [ ] Palo  Napomena: **30.09.2026 — PROŠLO.** `resource-use.spec.ts` sa lažnim satom: 4 min 50 s nijedan poziv, 5 min tačno jedan; 30 min sakriveno nijedan; povratak odmah jedan, pa opet svakih 5 min. Unit `visible-interval.test.ts` (4 testa).
 
+### [REC-24] Član sa samo Grupnim: jedno skeniranje u terminu, neplaćena teretana van termina (D-102)
+- **Prioritet:** Kritično
+- **Uloga / preduslovi:** Recepcioner sa otvorenom smjenom; član sa važećom članarinom **Grupni** (bez teretane) kod trenerice Milene, sa fiksnim terminom (D-71); nije u teretani
+- **Koraci:** 1) Skenirajte karticu do 90 minuta prije ili poslije početka njegovog termina, na dan kada Milena drži taj čas. 2) Odjavite ga. Drugi dan, ili više od 90 minuta od termina, skenirajte karticu istog (ili drugog takvog) člana. 3) Član sa samo Grupnim čijih je 12 termina potrošeno skenira u terminu. 4) Registrujte novog člana sa Grupnim i uključenim „Prijavi odmah", jednom sa fiksnim terminom koji je sada, jednom sa terminom za više od 90 minuta.
+- **Test podaci:** —
+- **Očekivani rezultat:** 1) **bez dijaloga za izbor vrste** pojavljuje se zeleni dijalog sa „Grupni: N preostalo“; dolazak je grupni, sa Milenom i „Čas: HH:MM“ njegovog termina. 2) žuti (ili od drugog neplaćenog crveni) dijalog „Članarina nije važeća – neplaćeni dolazak.“; dolazak je **Teretana, neplaćen**, grupni termin se ne troši. 3) žuti ili crveni dijalog sa [Produži članarinu], ne dijalog za izbor; dolazak je grupni, neplaćen. 4) u terminu: zeleni dijalog, grupni dolazak; van termina: žuti dijalog, neplaćen dolazak u teretanu. Novi G+T član sa „Prijavi odmah" se, kao i ranije, prijavljuje u teretanu bez pitanja.
+- **Gdje provjeriti:** UI; profil člana → Dolasci
+- [x] Prošlo  [ ] Palo  Napomena: **07.10.2026 — PROŠLO.** Koraci 1 i 2: `check-in-without-question.spec.ts` (desktop, produkcijska baza, svoja E2E teretana): jedno skeniranje u terminu daje zeleni dijalog „Grupni: 11 preostalo“ bez „Prijava:“, dolazak grupni sa Milenom i časom; tri sata prije termina žuti dijalog, dolazak Teretana neplaćen. Korak 3, dan bez časa i korak 4: pgTAP `0033` (grupni neplaćen sa trenerom i časom; registracija u terminu grupni, van termina teretana neplaćena, G+T teretana). Korak 3 i 4 nisu prođeni kroz UI.
+
+### [REC-25] Personalni sam, dvije članarine za teretanu, i G+T koji i dalje pita (D-102)
+- **Prioritet:** Visoko
+- **Uloga / preduslovi:** Recepcioner sa otvorenom smjenom; članovi: (a) samo Personalni kod Tamare, (b) dvije važeće članarine za teretanu, (c) G+T, (d) Mjesečna + Personalni
+- **Koraci:** skenirajte redom kartice članova a–d (između skeniranja zatvorite dijalog).
+- **Test podaci:** —
+- **Očekivani rezultat:** (a) bez pitanja, zeleni dijalog, personalni dolazak sa Tamarom (sa potrošenim terminima: žuti ili crveni); (b) bez pitanja, dolazak ide na članarinu koja ranije ističe; (c) i (d) otvara se „Prijava: <ime>“ sa izborom vrste dolaska (Teretana predizabrana), a Esc ništa ne upisuje. Ako trener sa članarine više ne vodi taj trening, i za (a) se otvara izbor da se trener izabere.
+- **Gdje provjeriti:** UI; profil člana → Dolasci
+- [x] Prošlo  [ ] Palo  Napomena: **07.10.2026 — PROŠLO.** (a) `pause-gym-fee.spec.ts`: skeniranje člana sa samo Personalnim daje zeleni dijalog bez pitanja; pgTAP `0033`: personalni sa Tamarom, 9 od 10, potrošeni termini neplaćen personalni, trener bez dodjele otvara izbor. (b) pgTAP `0033` i `0007`: bez pitanja, članarina koja ranije ističe. (c) `check-in-without-question.spec.ts`: G+T otvara „Prijava: <ime>“ sa predizabranom Teretanom, Esc ništa ne upisuje. (d) pgTAP `0033`: Mjesečna + Personalni i Mjesečna + Grupni pitaju. (b) i (d) nisu prođeni kroz UI.
+
 ---
 
 ### 3.5 MEM — članovi (S-05, S-06, S-07, S-09)
@@ -4306,6 +4324,30 @@ cio iznos teretani; „nije definisano“ ostaje za stare prodaje (`finance.spec
 | pgTAP sa migracijom 0051 u transakciji koja se poništava (produkcija) | **33/33 fajla**; `0031_personal_gym_fee` prepisan za D-101 (15 provjera: obavezno, minimum 40 €, stari obrazac odbijen, S-05, S-22, dio trenera 0); `0006` (83) prodaje Personalni preko fiksnog dijela |
 | Migracija 0051 na produkciji | primijenjena 02.10.2026 uz odobrenje vlasnika, odmah prije push-a (`f27300d`, Vercel produkcija READY); provjereno: po jedna `membership_sale` i `backdated_membership`, tijela identična fajlu 0051, prava ista kao prije; `npm run test:db` poslije primjene **33/33** |
 | E2E na produkcijskoj bazi, desktop, svaki spec u svojoj E2E teretani koju briše: `members` (8), `pause-gym-fee` (3), MSHIP-07, MSHIP-09/10, MSHIP-11, „the desk's day“ + FIN-11 | **16 prošlo**. MSHIP-10: `0` → „Fiksni dio za teretanu ne može biti manji od 80,00 €.“; FIN-11: Julija Prihod 100,00 €, Za trenera 0,00 €, Za teretanu 100,00 €. Poslije: u bazi je samo teretana KP Fitness |
+
+### 9.24 Dopuna — recepcija pita vrstu dolaska samo kad članarine pokrivaju više vrsta (D-102), 07.10.2026
+
+**D-102 (zahtjev 07.10.2026):** dijalog „Prijava: <ime>“ (izbor vrste dolaska, S-03a) otvara se
+samo kad članarine člana koje danas važe pokrivaju dvije ili više vrsta: G+T, ili Teretana uz
+Grupni ili Personalni kao posebne članarine. Inače se dolazak upisuje odmah: samo Teretana kao
+i ranije (i sa dvije članarine, uzima se ona koja ranije ističe); **samo Grupni** u svom fiksnom
+terminu (±90 min, na dan kada trener drži čas) kao grupni dolazak sa trenerom i časom, a **van
+termina kao neplaćen dolazak u teretanu** (žuti/crveni dijalog), jer član sa samo Grupnim ne smije
+u teretanu van termina; **samo Personalni** kao personalni dolazak sa trenerom. Potrošeni termini
+daju neplaćen dolazak te vrste i žuti/crveni dijalog sa [Produži članarinu]. Ako trener sa
+članarine više ne vodi taj trening, otvara se izbor da se trener izabere. „Prijavi odmah“ pri
+registraciji radi po istom pravilu (novi G+T član i dalje ide u teretanu bez pitanja). Migracija
+0052: nova interna `auto_check_in` (uz `member_class_slot` i `start_check_in_choose`), koju koriste
+`start_check_in` i `register_member`; ekran se ne mijenja.
+
+Novi slučajevi: REC-24 i REC-25. REC-03 (G+T bira vrstu) važi i dalje.
+
+| Provjera 07.10.2026 | Rezultat |
+|---|---|
+| `npm run lint`, `npm run typecheck`, unit (`tests/unit`) | PROŠLO (220 unit) |
+| pgTAP sa migracijom 0052 u transakciji koja se poništava (produkcija) | **34/34 fajla**; novo `0033_check_in_without_question` (27 provjera); `0007` (53): dvije članarine za teretanu više ne traže izbor, a izbor druge članarine i Teretana za člana sa samo Grupnim provjeravaju se na S-03a |
+| Migracija 0052 na produkciji | primijenjena 07.10.2026 uz odobrenje; provjereno: nove funkcije interne (`authenticated` i `anon` bez prava), `start_check_in` i `register_member` koriste `auto_check_in`, jedna `register_member`, prava RPC-ova ista. Poslije toga `npm run test:db` **34/34** |
+| E2E na produkcijskoj bazi, desktop, svaki spec u svojoj E2E teretani koju briše: `check-in-without-question` (3), `pause-gym-fee` (3), `reception` (4) | **10 prošlo**. Poslije: u bazi je samo teretana KP Fitness |
 
 *Kraj plana. Novi rezultati upisani su uz slučajeve; neoznačeni kvadratići nisu automatski prolaz.*
 

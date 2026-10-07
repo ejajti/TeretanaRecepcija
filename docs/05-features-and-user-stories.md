@@ -61,10 +61,12 @@ All features are **MVP**. Acceptance criteria (AC) are written so each one can b
 - AC2: From the moment Enter is received to the result on screen takes ≤ 1 s (p95) (doc 08 §9).
 - AC3: A scan is captured whenever S-03 is open and no text input or dialog other than the result dialogs has focus (S-03 scan capture rules).
 
-**US-04.2** As a receptionist, checking in a member with only gym coverage takes one scan and zero clicks.
-- AC1: The green dialog (BR-079) appears, the visit is saved with type `gym`, and the covering membership (BR-074) is linked.
+**US-04.2** As a receptionist, checking in a member whose memberships cover a single visit type takes one scan and zero clicks (BR-073, D-102).
+- AC1: Teretana only: the green dialog (BR-079) appears, the visit is saved with type `gym`, and the covering membership (BR-074) is linked, also when two gym memberships cover today.
+- AC2: Grupni only, at their class: the visit is saved with type `group`, the membership's trainer and the class. Outside their class: an unpaid gym visit with the yellow or red dialog.
+- AC3: Personalni only: the visit is saved with type `personal` and the membership's trainer. With the sessions used up (Grupni or Personalni), the visit is unpaid and the yellow or red dialog appears.
 
-**US-04.3** As a receptionist, I choose the visit type when the member has group or personal coverage (BR-073–076).
+**US-04.3** As a receptionist, I choose the visit type when the member's memberships cover two or more visit types, such as G+T (BR-073–076).
 - AC1: The buttons, preselection, trainer list, trainer default and slot default follow BR-073–076.
 - AC2: Enter confirms. Esc cancels, and nothing is saved.
 - AC3: When two memberships cover the type, a membership selector appears with the earliest-ending one preselected.
@@ -93,7 +95,7 @@ All features are **MVP**. Acceptance criteria (AC) are written so each one can b
 ## F-06 Member registration
 **US-06.1** As a receptionist, scanning an empty card opens registration and I sign the member up in one form (S-05).
 - AC1: The fields and validation follow BR-040–043, and the membership part follows F-08.
-- AC2: Save creates the member, assigns the card, creates the membership and payment and, if "Prijavi odmah" is checked (default), checks the member in, all in **one transaction**. If anything fails, nothing is saved.
+- AC2: Save creates the member, assigns the card, creates the membership and payment and, if "Prijavi odmah" is checked (default), checks the member in, all in **one transaction**. If anything fails, nothing is saved. The visit is recorded as a scan would record it (BR-073, D-102), without a question; a new G+T member is checked in to the gym.
 - AC3: After saving, a notice shows `Upišite ime olovkom na karticu: <Ime Prezime> (#<broj>)`.
 - AC4: [Novi član] on S-06 opens the same form with a "Skenirajte praznu karticu" field. Save is disabled until a valid unassigned card has been scanned.
 

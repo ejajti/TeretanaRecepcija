@@ -246,13 +246,18 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
   - A scan of the card then does not start a check-in. The automatic check-out is replaced by a real one: `checked_out_at` = now, `checked_out_by` = the staff member, `auto_checkout = false`. The result is the same as BR-072: `Odjavljen/a: <Ime Prezime> – <trajanje>`, with the duration from the check-in.
   - [Odjavi] in "U teretani" (BR-080) on a row the list still shows after the job closed it does the same.
   - A scan more than 60 minutes after the automatic check-out is a new check-in (BR-073 onward). The 60 minutes are fixed.
-- **BR-073 (visit type):**
+- **BR-073 (visit type, D-102):**
   - The options are **Teretana** plus every other type (Grupni, Personalni) covered by any of the member's memberships in the date range today, even if that type's sessions are used up.
-  - If Teretana is the only option, the visit is a gym visit and no question is asked.
-  - Otherwise, preselect Teretana if a membership covers gym today; else preselect Grupni; else Personalni. Enter confirms the preselection.
+  - **The question (S-03a) is asked only when the member's memberships in the date range today cover two or more visit types:** G+T, or Teretana together with Grupni or Personalni as separate memberships (or Grupni with Personalni). Otherwise the visit is recorded at once, with no question:
+    - **Teretana only, or nothing valid:** a gym visit with the BR-074 default membership, also when several gym memberships cover today; unpaid when none does (BR-078).
+    - **Grupni only:** the visit belongs to the group membership that covers today (earliest `end_date` first, BR-074), or, when every session is used up, to the one in its date range. When the member is **at their class**, it is a group visit with that membership's trainer and that class. Their class is the membership's fixed class time (BR-058a), when its trainer has an active slot at that time today starting within ±90 minutes of now (AS-12). A membership with no fixed class time (sold before D-71) takes the trainer's BR-075 default slot. Used-up sessions make it an unpaid group visit (BR-079). **Outside their class it is an unpaid gym visit:** a Grupni-only member may not use the gym at other times.
+    - **Personalni only:** a personal visit with that membership's trainer (chosen as for Grupni), unpaid when its sessions are used up.
+    - If that membership's trainer no longer meets BR-023 for the visit type, S-03a is shown so the receptionist picks one (BR-075, BR-076).
+  - "Prijavi odmah" at registration (US-06.1 AC2) records the visit by the same rule. A new G+T member, who would be asked, takes the preselection below (Teretana).
+  - On S-03a, preselect Teretana if a membership covers gym today; else preselect Grupni; else Personalni. Enter confirms the preselection.
 - **BR-074 (which membership).**
   - Candidates are memberships that cover the chosen type today (BR-053).
-  - If there are candidates, preselect the one with the earliest `end_date` (ties: earliest created). The receptionist may pick another candidate. The visit is linked to it and uses a session if a limit applies.
+  - If there are candidates, preselect the one with the earliest `end_date` (ties: earliest created). On S-03a the receptionist may pick another candidate. The visit is linked to it and uses a session if a limit applies.
   - If there are none, the visit is **unpaid** (`is_unpaid = true`, no membership).
 - **BR-075 (group visit):**
   - A trainer is required, chosen from BR-023 group trainers.
@@ -264,7 +269,7 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
 
 - **BR-076 (personal visit):** a trainer is required, chosen from BR-023 personal trainers. The default is the selected membership's trainer. No class slot.
 - **BR-077 (gym visit):** no trainer, no class slot.
-- **BR-078 (entry is never blocked):** a visit is always recorded, paid or unpaid. This includes a Grupni-only or Personalni-only member choosing Teretana, which becomes an unpaid gym visit.
+- **BR-078 (entry is never blocked):** a visit is always recorded, paid or unpaid. This includes a Grupni-only member scanned outside their class (BR-073), and Teretana chosen on S-03a for a member without gym coverage: both become an unpaid gym visit.
 - **BR-079 (result on screen):**
   - **Covered visit:** a green dialog showing:
     - name and member number;

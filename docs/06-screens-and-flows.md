@@ -89,7 +89,7 @@ An `admin` sees everything an owner sees (D-58).
 - empty text: `Trenutno nema nikoga u teretani.`
 
 **Check-in dialogs:**
-- **S-03a Visit type** (when BR-073 requires a choice):
+- **S-03a Visit type** (when BR-073 requires a choice: two or more covered visit types, or a membership trainer who no longer qualifies, D-102):
   - segmented buttons (Teretana / Grupni / Personalni);
   - for Grupni or Personalni: a trainer select and, for Grupni, a slot select (`Čas: HH:mm` / `Bez časa iz rasporeda`);
   - a membership select when there are 2 or more candidates;
@@ -113,7 +113,7 @@ An `admin` sees everything an owner sees (D-58).
 
 **After success:**
 - a success dialog `Član #<broj> je kreiran. Upišite ime olovkom na karticu: <Ime Prezime>.`;
-- if "Prijavi odmah" was checked, the check-in result then follows (S-03b/c/d).
+- if "Prijavi odmah" was checked, the check-in result then follows (S-03b/c/d), with the visit recorded as a scan would record it (BR-073, D-102): a new Grupni member outside their class gets the yellow dialog of an unpaid gym visit.
 
 ## S-06 Members — `/members`
 - **Controls:** a search box (BR-044), a status filter (Svi / Sa aktivnom članarinom / Bez aktivne članarine), and [Novi član].
