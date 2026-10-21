@@ -1137,6 +1137,20 @@ export const me = {
     unpaid: "neplaćen dolazak",
     notCame: "—",
     empty: "Nema grupnih termina ni članova sa grupnom članarinom.",
+    // D-105: the tabs of S-29 and the Personalni roster (BR-027a).
+    tabs: "Vrsta treninga",
+    tabGroup: "Grupni",
+    tabPersonal: "Personalni",
+    personalIntro:
+      "Članovi sa personalnom članarinom koja važi danas ili počinje kasnije, po treneru.",
+    validUntil: "Važi do",
+    sessionsLeft: "Preostalo termina",
+    sessionsOf: "{left} od {limit}",
+    unlimited: "Neograničeno",
+    startsOn: "Počinje {date}.",
+    personalEmptyTrainer: "Nema personalnih članova.",
+    personalEmpty:
+      "Nema trenera za personalni trening ni članova sa personalnom članarinom.",
   },
   // S-15 Statistika dolazaka (F-20).
   stats: {

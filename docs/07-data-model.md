@@ -590,13 +590,15 @@ For managers, `shift_summary` must verify that the requested shift is the curren
 - `fin_shifts(p_from, p_to)` — also a manager (D-80), without `report_path`, `email_status`, `email_attempts` and `emailed_at`;
 - `fin_expiring(p_days)`;
 - `fin_unpaid_members()`;
-- `fin_roster_prices(p_memberships uuid[])` — the payment amount of each listed membership, for S-29's owner columns (BR-027, D-72).
+- `fin_roster_prices(p_memberships uuid[])` — the payment amount of each listed membership, for S-29's owner columns on both tabs (BR-027, BR-027a, D-72, D-105).
 
 The four functions marked D-80 start with `assert_finance_period(p_from, p_to)` instead of the owner check. It admits the owner and the admin for any range, and a manager only for exactly today, this week (Monday to Sunday) or this month by `gym_today()`; anything else raises `E_FORBIDDEN`.
 
 **Statistics** (owner, manager): `visit_stats(p_from, p_to)`; a period over 400 days raises `E_PERIOD_TOO_LONG` (D-94).
 
 **Trainer roster** (all roles, D-72): `trainer_roster()` → json `{today, weekday, times, members, extras}`: every trainer's active group class times, the group memberships valid today with their fixed class time and today's check-in, and today's check-ins to a class by members not on its list (BR-027). It returns no amounts.
+
+**Personal roster** (all roles, D-105, migration 0056): `personal_roster()` → json `{today, trainers, members}`: every active trainer of an active personal program, and the personal memberships that are not voided and end today or later, each with its trainer, member, plan, `paid_on`, `start_date`, `end_date`, `personal_session_limit` and `personal_used` (`membership_used`, BR-054) (BR-027a). It returns no amounts; S-29's owner column reuses `fin_roster_prices`.
 
 ## 6. RLS — SELECT policies
 Writes: **none** for `authenticated`; everything goes through RPCs.

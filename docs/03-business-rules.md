@@ -90,6 +90,12 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
   - **Today:** a class time is held today when its trainer has an active slot at that time on today's weekday, or when someone checked in to such a slot today. For those class times each member shows the time of their first group check-in today to a slot of that trainer at that time, or `—`, and the header says `Došlo danas: <n> / <m>`. Group check-ins today to such a slot by members who are not on that list are shown under `Prijavljeni na čas, a nisu na spisku`, with `neplaćen dolazak` when the visit is unpaid. A group visit with no slot (`Bez časa iz rasporeda`) belongs to no class time.
   - The owner and the admin also see each membership's payment amount as `Cijena po članu (€)`, and per trainer the line `UKUPNO – <trener>` with their sum (BR-003). Nobody else ever receives these amounts (BR-157).
   - There is no limit on the number of members per class time.
+- **BR-027a (personal roster, D-105):** S-29's tab `Personalni` lists, for every staff role, who is assigned to each trainer for personal training:
+  - A membership is listed when it covers personal training, has a trainer, is not voided, its member is not anonymized, and its `end_date` is gym today or later: valid today, or starting later. Used-up sessions do not remove it. Each membership is its own row, so a member with the current and the next membership is listed twice, the current one first; the trainer's member count counts each member once.
+  - Memberships are grouped by trainer, trainers by name. Every active trainer assigned to an active program of kind `personal` (BR-023) is shown, even with no members. A trainer who is no longer active, or no longer trains Personalni, keeps their members (BR-025). Within a trainer the rows are by member name, then by start date.
+  - Each row shows the `paid_on` of the payment, the `end_date`, a `start_date` after today, and the personal sessions left: `personal_session_limit` minus the personal visits counted on the membership (BR-054), never below 0; no limit is `Neograničeno`.
+  - The owner and the admin also see each membership's payment amount as `Cijena po članu (€)` (since D-101 the gym's fixed part) and per trainer `UKUPNO – <trener>` with their sum, the next memberships included (BR-003). Nobody else ever receives these amounts (BR-157).
+  - The tab only shows: nothing on it changes data.
 
 ## 4. Member cards
 - **BR-030 (code):**

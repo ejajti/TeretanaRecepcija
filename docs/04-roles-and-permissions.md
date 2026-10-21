@@ -64,8 +64,8 @@
 | P-62 | Plans (add, edit, deactivate) | ✓ | ✗ | ✗ | BR-004 |
 | P-63 | Gym settings: fees, minimum, reminder days, close time, double-scan seconds, report recipients, logo | ✓ | ✗ | ✗ | BR-012 |
 | P-64 | Generate and print card batches | ✓ | ✗ (D-81) | ✗ | BR-036, D-81 |
-| P-65 | Trainer roster (S-29): members per trainer and fixed class time, today's check-ins | ✓ | ✓ | ✓ | BR-027, D-72 |
-| P-66 | Membership amounts and the revenue total on S-29 | ✓ | ✗ | ✗ | BR-027, BR-157 |
+| P-65 | Trainer roster (S-29): tab Grupni, members per trainer and fixed class time, today's check-ins; tab Personalni, members per trainer for personal training (D-105) | ✓ | ✓ | ✓ | BR-027, BR-027a, D-72, D-105 |
+| P-66 | Membership amounts and the revenue total on S-29, on both tabs | ✓ | ✗ | ✗ | BR-027, BR-027a, BR-157 |
 
 > ASSUMPTION (AS-5): Managers can manage manager and receptionist accounts, but never owner accounts. Only owners create owners.
 

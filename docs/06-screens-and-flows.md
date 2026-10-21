@@ -24,7 +24,7 @@ Routes are in English; every visible text is in Montenegrin (ijekavica). Text in
 |---|---|---|---|---|
 | Recepcija | `/reception` | ✓ | ✓ | ✓ (home) |
 | Članovi | `/members` | ✓ | ✓ | ✓ |
-| Treneri | `/trainers` | ✓ | ✓ | ✓ (D-72) |
+| Treneri | `/trainers` | ✓ | ✓ | ✓ (D-72; tabs Grupni and Personalni, D-105) |
 | Uplate danas | `/payments/today` | ✓ | ✓ | ✓ |
 | Magacin | `/storage` | ✓ (adds and edits products, D-76) | ✓ (adds and edits products, D-76) | ✓ |
 | Zaključi smjenu | `/shift/close` | ✗ | ✗ | ✓ |
@@ -313,13 +313,23 @@ The screen `/settings/products` and its Podešavanja item are gone. It showed th
   - the code under the QR code in the pattern `123 456 7890` (12 pt, monospace);
   - the label `Ime i prezime:` with an empty line (≥ 50 mm) along the bottom.
 
-## S-29 Trainers — `/trainers` (all roles, D-72)
-- **Title:** `Treneri`, with the line `Članovi sa grupnom članarinom koja važi danas, po treneru i fiksnom terminu.`
+## S-29 Trainers — `/trainers` (all roles, D-72, D-105)
+- **Title:** `Treneri`. Under it the tabs `Grupni` (`/trainers`, the default) and `Personalni` (`/trainers?tab=personalni`) (D-105), as on S-07; any other `tab` opens Grupni. Under the tabs, the line of the open tab: `Članovi sa grupnom članarinom koja važi danas, po treneru i fiksnom terminu.` or `Članovi sa personalnom članarinom koja važi danas ili počinje kasnije, po treneru.` Only the open tab's roster is read.
+
+### Tab Grupni
 - **Content (BR-027):** one table per trainer, trainers by name. Inside it, one header row per fixed class time, earliest first (`Uto, čet, sub · 08:00 · Članova: 7`), followed by its members. The class time at the start of the header row (`Uto, čet, sub · 08:00`, or `Termin nije upisan`) is bold (D-78). `Termin nije upisan` comes last, with the hint `Članarine prodate prije uvođenja fiksnog termina. Termin se upisuje na profilu člana → [Promijeni termin].` A class time without members shows `Nema upisanih članova.`
 - **Columns:** `#` (row number within the class time), `Član` (`#<broj> <ime i prezime>`, a link to S-07), `Vrsta` (the plan name), `Datum uplate`, `Danas`, and for the owner and admin only `Cijena po članu (€)`.
 - **Today:** for a class time held today the header adds `Došlo danas: <n> / <m>`, and `Danas` shows each member's check-in time (`HH:mm`) or `—`. Under the members, the line `Prijavljeni na čas, a nisu na spisku:` lists the others who checked in to it, each as `#<broj> <ime i prezime> (HH:mm)`, adding `neplaćen dolazak` for an unpaid visit. For a class time not held today, `Danas` stays empty.
 - **Owner and admin:** the trainer's table ends with the row `UKUPNO – <trener>` and the sum of `Cijena po članu (€)`.
 - **Empty list:** `Nema grupnih termina ni članova sa grupnom članarinom.`
+
+### Tab Personalni (D-105)
+- **Content (BR-027a):** one table per trainer, trainers by name: every active trainer of an active personal program, and any other trainer with a listed membership. The trainer's name is followed by `Članova: <n>` (each member once). A trainer without members shows `Nema personalnih članova.` in the table.
+- **Columns:** `#` (row number within the trainer), `Član` (`#<broj> <ime i prezime>`, a link to S-07; a membership that starts after today adds the line `Počinje <datum>.` under it), `Datum uplate`, `Važi do`, `Preostalo termina` (`6 od 12`, `0 od 4` when used up, or `Neograničeno`), and for the owner and admin only `Cijena po članu (€)`.
+- **Rows:** one per membership, by member name, the current membership before the next one.
+- **Owner and admin:** the trainer's table ends with the row `UKUPNO – <trener>` and the sum of `Cijena po članu (€)`.
+- **Empty list:** `Nema trenera za personalni trening ni članova sa personalnom članarinom.`
+- There is no button on the tab; it only shows.
 
 ## S-30 Fixed expenses — `/finance/recurring` (owner; D-93)
 - **Title:** `Fiksni troškovi`, with [Dodaj fiksni trošak] beside it and the line `Trošak se knjiži automatski 1. u mjesecu. Izmjena važi od sljedećeg knjiženja.`

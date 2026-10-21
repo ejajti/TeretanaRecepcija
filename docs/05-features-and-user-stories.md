@@ -230,6 +230,12 @@ Covered by US-04.4, BR-078 and BR-079.
 - AC2: A slot can only be created with a trainer assigned to its program.
 - AC3: Trainer fee fields are visible to owners only.
 
+**US-22.2 (D-72, D-105)** As any staff role, I see on S-29 Treneri which members are assigned to which trainer, on the tabs `Grupni` (BR-027) and `Personalni` (BR-027a), without opening each member's profile.
+- AC1: `/trainers` opens on `Grupni`, the roster of D-72; [Personalni] opens `/trainers?tab=personalni`.
+- AC2: `Personalni` lists per trainer the personal memberships valid today or starting later, with `Datum uplate`, `Važi do` and `Preostalo termina`; one that starts later shows `Počinje <datum>.`; a used-up one stays with `0 od <n>`; an expired, voided or group membership is not listed.
+- AC3: Every active trainer of an active personal program is shown, with `Nema personalnih članova.` when they have none.
+- AC4: Only the owner and the admin see `Cijena po članu (€)` and `UKUPNO – <trener>` (BR-157).
+
 ## F-23 Back-dated entries
 **US-23.1** As the owner, I enter past visits, membership sales, day passes and card replacement payments (S-22, BR-120). Each record shows a "Naknadno" badge wherever it is listed.
 

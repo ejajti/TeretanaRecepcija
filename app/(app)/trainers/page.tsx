@@ -1,5 +1,14 @@
 import type { Metadata } from "next";
+import { PersonalRoster } from "@/features/trainers/components/personal-roster";
 import { TrainerRoster } from "@/features/trainers/components/trainer-roster";
+import {
+  TrainerTabs,
+  type TrainerTab,
+} from "@/features/trainers/components/trainer-tabs";
+import {
+  buildPersonalRoster,
+  type PersonalRosterData,
+} from "@/features/trainers/personal-roster";
 import { buildRoster, type RosterData } from "@/features/trainers/roster";
 import { requireStaff } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
@@ -11,42 +20,84 @@ export const metadata: Metadata = {
   title: `${me.trainerRoster.title} — ${me.app.name}`,
 };
 
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
 /**
- * S-29 (D-72, BR-027): every role. The amounts are asked for only for the owner and the
- * admin, through the owner-only fin_roster_prices (BR-157, doc 08 §2); trainer_roster
- * itself never returns them.
+ * BR-027, BR-027a and BR-157: the amounts of the listed memberships, asked for only for
+ * the owner and the admin through the owner-only fin_roster_prices (doc 08 §2).
  */
-export default async function TrainerRosterPage() {
+async function rosterPrices(supabase: Supabase, memberships: string[]) {
+  const { data: rows, error } = await supabase.rpc("fin_roster_prices", {
+    p_memberships: memberships,
+  });
+  if (error) console.error(`fin_roster_prices: ${error.message}`);
+  return new Map(
+    ((rows ?? []) as { membership_id: string; amount: string }[]).map((row) => [
+      row.membership_id,
+      row.amount,
+    ]),
+  );
+}
+
+/**
+ * S-29 (D-72, D-105): every role. Tab Grupni (`/trainers`) is trainer_roster (BR-027),
+ * tab Personalni (`/trainers?tab=personalni`) is personal_roster (BR-027a); only the open
+ * tab's roster is read. Neither function ever returns an amount.
+ */
+export default async function TrainerRosterPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const staff = await requireStaff();
   const isOwner = staff.role === "owner" || staff.role === "admin";
+  const query = await searchParams;
+  const tab: TrainerTab = query.tab === "personalni" ? "personalni" : "grupni";
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("trainer_roster");
+  const { data, error } = await supabase.rpc(
+    tab === "personalni" ? "personal_roster" : "trainer_roster",
+  );
+
+  let content: React.ReactNode;
   if (error) {
-    return (
+    content = (
       <p className="text-sm text-danger">{getErrorMessage(rpcCode(error))}</p>
     );
-  }
-  const roster = data as RosterData;
-
-  let prices: Map<string, string> | undefined;
-  if (isOwner) {
-    const { data: rows, error: pricesError } = await supabase.rpc(
-      "fin_roster_prices",
-      { p_memberships: roster.members.map((row) => row.membership_id) },
+  } else if (tab === "personalni") {
+    const roster = data as PersonalRosterData;
+    const prices = isOwner
+      ? await rosterPrices(
+          supabase,
+          roster.members.map((row) => row.membership_id),
+        )
+      : undefined;
+    content = (
+      <PersonalRoster
+        trainers={buildPersonalRoster(roster, prices)}
+        showPrices={isOwner}
+      />
     );
-    if (pricesError) console.error(`fin_roster_prices: ${pricesError.message}`);
-    prices = new Map(
-      ((rows ?? []) as { membership_id: string; amount: string }[]).map(
-        (row) => [row.membership_id, row.amount],
-      ),
+  } else {
+    const roster = data as RosterData;
+    const prices = isOwner
+      ? await rosterPrices(
+          supabase,
+          roster.members.map((row) => row.membership_id),
+        )
+      : undefined;
+    content = (
+      <TrainerRoster
+        trainers={buildRoster(roster, prices)}
+        showPrices={isOwner}
+      />
     );
   }
 
   return (
-    <TrainerRoster
-      trainers={buildRoster(roster, prices)}
-      showPrices={isOwner}
-    />
+    <div className="grid grid-cols-1 gap-8">
+      <TrainerTabs tab={tab} />
+      {content}
+    </div>
   );
 }

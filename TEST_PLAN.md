@@ -173,7 +173,7 @@ Poništene stavke ostaju u Dnevniku izmjena — tako i treba (BR-095).
 | `/reception` | S-03 Recepcija | sve uloge |
 | `/members` | S-06 Članovi | sve uloge |
 | `/members/[id]` | S-07 Profil člana | sve uloge (RLS filtrira uplate) |
-| `/trainers` | S-29 Treneri (D-72) | sve uloge (iznose vide samo admin i vlasnik) |
+| `/trainers` | S-29 Treneri (D-72), tabovi Grupni i Personalni (`?tab=personalni`, D-105) | sve uloge (iznose vide samo admin i vlasnik) |
 | `/payments/today` | S-12 Uplate danas | sve uloge (troškove filtrira RLS) |
 | `/storage` | S-13 Magacin | sve uloge ([Dodaj proizvod], [Uredi] i neaktivni: admin, vlasnik, menadžer, D-76) |
 | `/shift/gate` | S-02 Otvorena smjena | samo recepcioner |
@@ -1628,6 +1628,27 @@ Legenda: svaki test ima polje za rezultat. Popunjavajte ga dok radite.
   („<dani> · 08:00“) je podebljano (D-78).
 - **Gdje provjeriti:** UI; `trainer_roster()`, `fin_roster_prices()`
 - [x] Prošlo  [ ] Palo  Napomena: **30.09.2026 — PROŠLO.** `trainer-roster.spec.ts` (oba projekta), DB `0015_trainer_roster` (28 tvrdnji), unit `trainer-roster.test.ts`. Zaglavlja, „—“, „Prijavljeni na čas, a nisu na spisku“, „Termin nije upisan“, bez iznosa za recepcionera, 237,00 € za vlasnika; vrijeme termina podebljano (`font-weight: 700`, D-78).
+
+### [MSHIP-20] Pregled trenera — personalni članovi po treneru (D-105, BR-027a)
+- **Prioritet:** Visoko
+- **Uloga / preduslovi:** Recepcioner, pa Vlasnik. Julija i Tamara vode Personalni, Milena samo
+  grupni trening. Kod Julije: član 1 ima Personalni koji važi danas (12 termina, 2 iskorišćena,
+  80 €) i sljedeći koji počinje kad prvi istekne (8 termina, 100 €); član 2 ima Personalni sa
+  sva 4 termina iskorišćena (45 €); član 4 ima Personalni koji je istekao juče. Član 3 ima
+  Grupni kod Milene u 08:00. Tamara nema personalnih članova.
+- **Koraci:** 1) Kao recepcioner otvorite **Treneri**. 2) Kliknite tab **Personalni**.
+  3) Kliknite na člana 2. 4) Prijavite se kao vlasnik i otvorite `/trainers?tab=personalni`.
+- **Test podaci:** —
+- **Očekivani rezultat:** 1) Otvoren je tab „Grupni“ sa grupnom listom kao ranije (član 3 kod
+  Milene). 2) Adresa je `/trainers?tab=personalni`, ispod tabova piše „Članovi sa personalnom
+  članarinom koja važi danas ili počinje kasnije, po treneru.“ Kod Julije „Članova: 2“ i tri
+  reda: član 1 sa „10 od 12“, član 1 sa „Počinje <datum>.“ i „8 od 8“, član 2 sa „0 od 4“;
+  svaki red ima Datum uplate i Važi do. Član 4 (istekao) i član 3 (Grupni) nisu na tabu, a
+  Milene nema. Kod Tamare „Nema personalnih članova.“ Recepcioner ne vidi „Cijena po članu (€)“
+  ni „UKUPNO“. 3) Otvara se profil člana 2. 4) Vlasnik vidi i kolonu „Cijena po članu (€)“
+  (80,00 €, 100,00 €, 45,00 €) i red „UKUPNO – Julija“ sa 225,00 €; kod Tamare 0,00 €.
+- **Gdje provjeriti:** UI; `personal_roster()`, `fin_roster_prices()`
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `personal-roster.spec.ts` (oba projekta, 4 testa), DB `0036_personal_roster` (24 tvrdnje), unit `personal-roster.test.ts` (6).
 
 ---
 
@@ -4473,6 +4494,32 @@ mjeseca i čitaju se kao ranije.
 | E2E `expense-cost-month` (desktop i mobilni) | **4 prošlo** poslije popravke: na 375 px je dugme [Sačuvaj] bilo ispod ekrana jer je forma viša; dijalog troška se sada pomjera (kao Nova roba) |
 | Cijeli E2E (`npm run test:e2e`), dev server, oba projekta, sa D-103 i D-104 (21.10.2026) | **366 prošlo, 2 pala**, 2 nisu pokrenuta (serijski nastavci palih), 164 preskočeno. Svi testovi magacina, poravnanja, troškova i finansija prošli su na desktopu i mobilnom. Pali: **UX-04**, jer je jedina neimenovana stavka u redoslijedu tabulatora `nextjs-portal` (dugme Next.js dev alata, samo na dev serveru, vidi 9.12), i **UX-02**, koji zavisi od vremena. Nepokrenuti: §5.2 / N-24 (posebno pušten: prošao) i MEM-18 (PDF) (pušten sa UX-02: prošao) |
 | UX-02 posebno | Prolazi samo kad klik na meni stigne prije hidracije: tada server pošalje cijelu stranicu sa skeletonom. Kad se sačeka da React bude spreman (`networkidle`), skeleton se pri navigaciji kroz meni ne pojavi i test pada 3/3 **i na stanju prije D-103 (`ffdc790`)**, pa ga ove izmjene nisu pokvarile. Na `ffdc790` bez čekanja 7/7, na novom kodu 15/18 (sa trace-om 13/13). Test je ostao nepromijenjen. Zapažanje za kasnije: sa `prefetch={false}` (D-86) navigacija kroz meni na sporoj mreži ne prikazuje skeleton |
+
+### 9.27 Dopuna — personalni članovi na kartici Treneri (D-105), 21.10.2026
+
+**D-105 (zahtjev 21.10.2026):** na kartici Treneri (S-29) se vidi i koji su članovi kod kog
+trenera na personalnom treningu, bez otvaranja profila svakog člana. Stranica ima tabove
+**Grupni** (`/trainers`, dosadašnja lista, nepromijenjena i podrazumijevana) i **Personalni**
+(`/trainers?tab=personalni`). Personalni po treneru prikazuje personalne članarine koje važe
+danas ili počinju kasnije (sa „Počinje <datum>.“), jedan red po članarini: član (link na
+profil), Datum uplate, Važi do i Preostalo termina („6 od 12“). Prikazan je svaki aktivni
+trener personalnog programa, i kad nema članova. Vlasnik i admin vide i „Cijena po članu (€)“ i
+„UKUPNO – <trener>“ preko postojeće `fin_roster_prices`. Samo pregled: na tabu se ništa ne
+mijenja. Migracija 0056 samo dodaje funkciju `personal_roster()` koja čita.
+
+Novi slučaj: MSHIP-20. Pravilo BR-027a u doc 03, US-22.2 u doc 05.
+
+**Teretana radi:** postojeći podaci nisu mijenjani ni brisani. Migracija ne dira nijednu tabelu
+ni postojeću funkciju; aplikacija koja je radila za vrijeme izmjene je novu funkciju ne poziva.
+
+| Provjera 21.10.2026 | Rezultat |
+|---|---|
+| 0056 i pgTAP u transakciji koja se poništava (produkcija) | novo `0036_personal_roster` (24 provjere) i `0015_trainer_roster` (28) prolaze; nad živim podacima funkcija vraća 3 trenera i 9 personalnih članarina, isto kao direktno brojanje, bez iznosa, za 46 ms; poslije poništavanja u bazi nema ni funkcije ni test podataka |
+| Migracija 0056 na produkciji | primijenjena uz odobrenje; `personal_roster` je `stable` i `security definer`, `anon` bez prava, `authenticated` sa pravom (kao `trainer_roster`); u bazi i dalje jedna teretana, 134 članarine, 151 uplata, 523 dolaska |
+| `npm run test:db` | **37/37** |
+| `npm run lint`, `npm run typecheck`, unit (`tests/unit`) | PROŠLO (240 unit, 6 novih) |
+| E2E `personal-roster` (desktop i mobilni), svoja E2E teretana koju briše | **4 prošlo**. Poslije: u bazi je samo KP Fitness, bez E2E teretana i korisnika |
+| Ostali E2E | po zahtjevu nisu pokretani (samo novi test). `personal-roster` provjerava i da tab Grupni ostaje podrazumijevan sa grupnom listom; `trainer-roster.spec.ts` (D-72) nije ponovo pušten |
 
 *Kraj plana. Novi rezultati upisani su uz slučajeve; neoznačeni kvadratići nisu automatski prolaz.*
 

@@ -28,9 +28,10 @@ function groupCounts(group: RosterGroup) {
 }
 
 /**
- * S-29 (D-72, BR-027): one table per trainer, one block per fixed class time. The price
- * column and the total are rendered only when `showPrices` is set, and their values come
- * from the owner-only fin_roster_prices (BR-157).
+ * S-29 tab Grupni (D-72, BR-027): one table per trainer, one block per fixed class time.
+ * The price column and the total are rendered only when `showPrices` is set, and their
+ * values come from the owner-only fin_roster_prices (BR-157). The title and the tabs are
+ * TrainerTabs (D-105).
  */
 export function TrainerRoster({
   trainers,
@@ -42,12 +43,7 @@ export function TrainerRoster({
   const columns = showPrices ? 6 : 5;
 
   return (
-    <div className="grid grid-cols-1 gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t.intro}</p>
-      </div>
-
+    <>
       {trainers.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t.empty}</p>
       ) : (
@@ -186,6 +182,6 @@ export function TrainerRoster({
           </section>
         ))
       )}
-    </div>
+    </>
   );
 }
