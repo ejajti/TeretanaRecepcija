@@ -19,7 +19,7 @@ create type visit_type        as enum ('gym', 'group', 'personal');
 create type card_status       as enum ('unassigned', 'active', 'deactivated');
 create type payment_kind      as enum ('membership', 'day_pass', 'card_replacement');
 create type payment_method    as enum ('cash', 'card');
-create type stock_move        as enum ('in', 'out');
+create type stock_move        as enum ('in', 'out', 'adjust');  -- adjust added by D-103 (migration 0053)
 create type shift_close_type  as enum ('manual', 'takeover', 'auto');
 create type email_status      as enum ('not_sent', 'pending', 'sent', 'failed');
 ```
@@ -360,21 +360,28 @@ create table stock_movements (
   gym_id         uuid not null references gyms(id),
   product_id     uuid not null references products(id),
   type           stock_move not null,
-  quantity       integer not null check (quantity between 1 and 10000),
-  unit_cost      numeric(10,2) not null check (unit_cost >= 0),   -- in: entered; out: snapshot
+  quantity       integer not null,                              -- adjust: the signed difference (D-103)
+  unit_cost      numeric(10,2) not null check (unit_cost >= 0),   -- in: entered; out, adjust: snapshot
   unit_price     numeric(10,2) check (unit_price > 0),           -- out only
   method         payment_method,                                -- out: required
   paid_from_till boolean not null default false,                -- in only
+  counted_qty    integer check (counted_qty between 0 and 10000),  -- adjust only (BR-145)
+  adjust_reason  text check (adjust_reason in ('damaged', 'expired', 'internal_use', 'count', 'other')),
+  note           text check (char_length(note) between 1 and 200),  -- adjust only
   created_by     uuid not null references staff(id),
   shift_id       uuid references shifts(id),
   created_at     timestamptz not null default now(),
   voided_at      timestamptz,
   voided_by      uuid references staff(id),
   void_reason    text,
+  check (case when type = 'adjust' then quantity <> 0 else quantity between 1 and 10000 end),
   check ((type = 'out') = (unit_price is not null and method is not null)),
   check (type <> 'in' or unit_cost > 0),                     -- BR-141, D-55: no free deliveries
   check (type = 'in' or not paid_from_till),
-  check (type = 'in' or shift_id is not null),
+  check (type <> 'out' or shift_id is not null),              -- migration 0054: was "type = 'in' or"
+  check (case when type = 'adjust'                            -- D-103: an adjustment has no shift
+              then counted_qty is not null and adjust_reason is not null and shift_id is null
+              else counted_qty is null and adjust_reason is null and note is null end),
   check (not paid_from_till or shift_id is not null),
   check ((voided_at is null) = (void_reason is null))
 );
@@ -545,7 +552,8 @@ All RPCs are `security definer`. Each one:
 | `void_expense(p_expense, p_reason)` | per BR-135 | BR-135 |
 | `stock_in(p_product, p_qty, p_unit_cost, p_from_till bool, p_method default null, p_spent_on date default null, p_description default null, p_supplier default null, p_invoice default null, p_vat bool default null)` | all (owner/admin for an earlier `p_spent_on`, D-95) | BR-141 |
 | `stock_sale(p_product, p_qty, p_method)` | all | BR-142 |
-| `correct_sale(p_movement, p_method)`, `void_stock_movement(p_movement, p_reason)` | per BR-094 and BR-095 | |
+| `correct_sale(p_movement, p_method)`, `void_stock_movement(p_movement, p_reason)` | per BR-094 and BR-095; a stock-in or an adjustment: owner, admin | |
+| `adjust_stock(p_product uuid, p_counted int, p_expected int, p_reason text, p_note text default null)` → stock_movements | owner, admin, manager | BR-145 (D-103); `E_STOCK_CHANGED` with the stock level in the detail when it is no longer `p_expected` |
 | `backdated_visit(…)`, `backdated_membership(…, p_class_time time default null)` (for Personalni `p_amount` is the gym's fixed part, D-101), `backdated_day_passes(…)`, `backdated_card_fee(…)` | owner | BR-120, BR-058a |
 | `generate_card_batch(p_qty)` → batch | owner (D-81) | BR-030, BR-036 |
 | `upsert_trainer`, `upsert_program`, `set_trainer_program`, `upsert_class_slot` | owner, manager | BR-023–026 |
@@ -564,15 +572,15 @@ For managers, `shift_summary` must verify that the requested shift is the curren
 `stock_in` rejects a purchase price below €0.01 with `E_STOCK_COST_INVALID` before creating either the movement or its expense (BR-141, D-55).
 
 **Owner-only report functions** (`security definer`; each starts with `if my_role() <> 'owner' then raise`):
-- `fin_summary(p_from, p_to)` — also a manager (D-80), who gets only `income` and `expenses` as paid, salary categories left out. The owner's `expenses` are the cost of goods sold plus the operating expenses, and `profit` is BR-152 (D-92);
-- `fin_statement(p_from, p_to)` — the owner's income statement and cash flow (D-92): `income` {`memberships`, `training`, `storage`, `other`, `total`}, `cogs`, `gross_profit`, `operating` [{`name`, `total`}], `operating_total`, `profit`, `cash_flow` {`received`, `goods_paid`, `other_paid`, `net_change`}, `stock_value`, `stock_value_date` (BR-150 to BR-153, BR-158, BR-159). A period that ends before it starts raises `E_VALIDATION`;
+- `fin_summary(p_from, p_to)` — also a manager (D-80), who gets only `income` and `expenses` as paid, salary categories left out. The owner's `expenses` are the cost of goods sold, Manjak robe (D-103) and the operating expenses, and `profit` is BR-152 (D-92);
+- `fin_statement(p_from, p_to)` — the owner's income statement and cash flow (D-92): `income` {`memberships`, `training`, `storage`, `other`, `total`}, `cogs`, `shrinkage` (Manjak robe, BR-145, D-103), `gross_profit`, `operating` [{`name`, `total`}], `operating_total`, `profit`, `cash_flow` {`received`, `goods_paid`, `other_paid`, `net_change`}, `stock_value`, `stock_value_date` (BR-150 to BR-153, BR-158, BR-159). A period that ends before it starts raises `E_VALIDATION`;
 - `fin_income_breakdown(p_from, p_to)` — also a manager (D-80), whose `by_category` leaves out salary categories;
-- `fin_chart(p_year, p_month default null)` — the S-16 chart (D-68): the year's twelve months, or the month's days, each with income and expenses, `null` after today; plus the totals and the first year that holds any money. A slot's expenses are its operating expenses plus the cost of the goods sold in it (D-92);
+- `fin_chart(p_year, p_month default null)` — the S-16 chart (D-68): the year's twelve months, or the month's days, each with income and expenses, `null` after today; plus the totals and the first year that holds any money. A slot's expenses are its operating expenses plus the cost of the goods sold in it (D-92) and its Manjak robe (D-103);
 - `fin_expenses(p_from, p_to, filters)` — also a manager (D-80), without salary-category rows; each row names its `recurring_expense_id` (D-93) and who entered it, `created_by` (D-96, S-12);
 - `fin_recurring_expenses()` — S-30 (D-93): `items` (with `category_name`, `is_salary`, `last_posted` and `has_postings`) and the active ones' `salary_total`, `other_total` and `total` a month;
 - `fin_trainer_stats(p_month date)`;
 - `fin_trainer_payments(p_trainer, p_month)`;
-- `fin_storage(p_from, p_to)` — per product the prices, the period's stock-ins and sales with their cost, profit and margin, and the stock and its value at the end of the period (BR-159), plus `totals` and `stock_date` (D-92);
+- `fin_storage(p_from, p_to)` — per product the prices, the period's stock-ins and sales with their cost, profit and margin, its adjustments (`adjust_quantity`, signed, and `shrinkage`, D-103), and the stock and its value at the end of the period (BR-159), plus `totals`, `stock_date` (D-92), `stock_ins` and `adjustments` (D-103: `before_qty`, `counted_qty`, `quantity`, `adjust_reason`, `note`, `shrinkage`, who entered it and the void);
 - `fin_shifts(p_from, p_to)` — also a manager (D-80), without `report_path`, `email_status`, `email_attempts` and `emailed_at`;
 - `fin_expiring(p_days)`;
 - `fin_unpaid_members()`;

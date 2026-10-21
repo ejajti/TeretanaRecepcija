@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { saleSchema, stockInSchema } from "@/features/storage/schemas";
+import {
+  adjustReasonLabel,
+  reasonsFor,
+  signedQuantity,
+} from "@/features/storage/adjust";
+import {
+  adjustSchema,
+  saleSchema,
+  stockInSchema,
+} from "@/features/storage/schemas";
+import { getErrorMessage } from "@/lib/errors";
 import { me } from "@/lib/i18n/me";
 
 const productId = "11111111-1111-4111-8111-111111111111";
@@ -100,5 +110,94 @@ describe("saleSchema (BR-142)", () => {
     expect(
       saleSchema.safeParse({ productId, quantity: "1", method: "" }).success,
     ).toBe(false);
+  });
+});
+
+describe("adjustSchema (D-103, BR-145)", () => {
+  // S-13 Poravnanje stanja, as FormData sends it: E26 counts 5 of 10 bags.
+  const base = {
+    productId,
+    counted: "5",
+    expected: "10",
+    reason: "damaged",
+    note: "",
+  };
+  const issue = (value: Record<string, string>) =>
+    adjustSchema.safeParse({ ...base, ...value }).error?.issues[0]?.message;
+
+  it("accepts E26: five of ten bags, damaged, with the note trimmed", () => {
+    expect(adjustSchema.parse({ ...base, note: "  Pukle kesice " })).toEqual({
+      productId,
+      counted: 5,
+      expected: 10,
+      reason: "damaged",
+      note: "Pukle kesice",
+    });
+  });
+  it("counts 0–10,000 whole units, and an empty field is not a count of zero", () => {
+    expect(adjustSchema.parse({ ...base, counted: "0" }).counted).toBe(0);
+    for (const counted of ["", "  ", "-1", "10001", "2.5", "pet"])
+      expect(issue({ counted })).toBe(me.storage.adjustCountedInvalid);
+  });
+  it("refuses a count equal to the stock level", () => {
+    expect(issue({ counted: "10" })).toBe(me.storage.adjustSame);
+  });
+  it("offers goods found only a stock count or Ostalo", () => {
+    for (const reason of ["damaged", "expired", "internal_use"])
+      expect(issue({ counted: "12", reason })).toBe(
+        me.storage.adjustReasonInvalid,
+      );
+    expect(
+      adjustSchema.safeParse({ ...base, counted: "12", reason: "count" })
+        .success,
+    ).toBe(true);
+    expect(issue({ reason: "stolen" })).toBe(me.storage.adjustReasonInvalid);
+  });
+  it("needs a note of 3–200 characters for Ostalo, and allows one up to 200", () => {
+    expect(issue({ reason: "other", note: " ab " })).toBe(
+      me.storage.adjustNoteRequired,
+    );
+    expect(
+      adjustSchema.safeParse({ ...base, reason: "other", note: "Popis" })
+        .success,
+    ).toBe(true);
+    expect(issue({ note: "a".repeat(201) })).toBe(me.storage.adjustNoteInvalid);
+  });
+  it("counts the note in characters, as the database does", () => {
+    // Two emoji are four UTF-16 units but two characters: too short for Ostalo.
+    expect(issue({ reason: "other", note: "😀😀" })).toBe(
+      me.storage.adjustNoteRequired,
+    );
+    expect(
+      adjustSchema.safeParse({ ...base, note: "😀".repeat(200) }).success,
+    ).toBe(true);
+  });
+});
+
+describe("adjustment labels (D-103)", () => {
+  it("lists every reason for goods short and two for goods found", () => {
+    expect(reasonsFor(-5)).toEqual([
+      "damaged",
+      "expired",
+      "internal_use",
+      "count",
+      "other",
+    ]);
+    expect(reasonsFor(2)).toEqual(["count", "other"]);
+  });
+  it("names a stock count by its direction", () => {
+    expect(adjustReasonLabel("count", -5)).toBe("Manjak pri popisu");
+    expect(adjustReasonLabel("count", 2)).toBe("Višak pri popisu");
+    expect(adjustReasonLabel("internal_use", -1)).toBe("Potrošeno u teretani");
+  });
+  it("writes the sign of a difference", () => {
+    expect(signedQuantity(-5)).toBe("-5");
+    expect(signedQuantity(2)).toBe("+2");
+    expect(signedQuantity(0)).toBe("0");
+  });
+  it("names the stock level now when the count no longer matches", () => {
+    expect(getErrorMessage("E_STOCK_CHANGED", { qty: "9" })).toBe(
+      "Stanje se u međuvremenu promijenilo (sada: 9). Prebrojte ponovo.",
+    );
   });
 });

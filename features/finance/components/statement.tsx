@@ -13,6 +13,8 @@ export type Statement = {
     total: string;
   };
   cogs: string;
+  /** D-103 (BR-145): goods short at a stock count, less goods found. */
+  shrinkage: string;
   gross_profit: string;
   operating: { name: string; total: string }[];
   operating_total: string;
@@ -77,9 +79,10 @@ function Heading({ children }: { children: string }) {
 
 /**
  * S-16 (D-92): what the period earned and what it spent, side by side. On the left the
- * income statement — income, the cost of the goods sold, operating expenses by category,
- * profit (BR-150 to BR-153). On the right the cash flow, where the goods bought count
- * whether or not they were sold (BR-158), and the value of the goods left (BR-159).
+ * income statement — income, the cost of the goods sold, Manjak robe (D-103), operating
+ * expenses by category, profit (BR-150 to BR-153). On the right the cash flow, where the
+ * goods bought count whether or not they were sold (BR-158), and the value of the goods
+ * left (BR-159).
  */
 export function StatementSection({ statement }: { statement: Statement }) {
   const { income, cash_flow: cash } = statement;
@@ -120,6 +123,11 @@ export function StatementSection({ statement }: { statement: Statement }) {
                 strong
               />
               <Line label={me.finance.cogs} value={statement.cogs} strong />
+              <Line
+                label={me.finance.shrinkage}
+                value={statement.shrinkage}
+                strong
+              />
               <Line
                 label={me.finance.grossProfit}
                 value={statement.gross_profit}

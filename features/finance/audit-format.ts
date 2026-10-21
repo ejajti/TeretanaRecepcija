@@ -97,7 +97,19 @@ const PLAN_KINDS: Record<string, string> = {
 
 const ENUMS: Record<string, Record<string, string>> = {
   method: { cash: me.audit.values.cash, card: me.audit.values.card },
-  type: { in: me.audit.values.stockIn, out: me.audit.values.stockOut },
+  type: {
+    in: me.audit.values.stockIn,
+    out: me.audit.values.stockOut,
+    adjust: me.audit.values.stockAdjust,
+  },
+  // D-103: why the stock was adjusted.
+  adjust_reason: {
+    damaged: me.storage.adjustReasons.damaged,
+    expired: me.storage.adjustReasons.expired,
+    internal_use: me.storage.adjustReasons.internal_use,
+    count: me.storage.adjustReasons.count,
+    other: me.storage.adjustReasons.other,
+  },
   duration_unit: { day: me.audit.values.days, month: me.audit.values.months },
   role: me.roles,
 };

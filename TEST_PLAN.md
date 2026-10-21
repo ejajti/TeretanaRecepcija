@@ -1830,7 +1830,7 @@ Legenda: svaki test ima polje za rezultat. Popunjavajte ga dok radite.
 - **Gdje provjeriti:** UI
 - [x] Prošlo  [ ] Palo  Napomena: **01.10.2026 — PROŠLO.** `manager-finance.spec.ts` „D-96“ na produkcijskoj bazi: „Troškovi danas“, vlasnikov trošak 40,00 € sa isključenim [Poništi], bez isplate plate i bez naslova „Moji troškovi danas“. PERM-06 (recepcioner) ponovo prošao. Vidi §9.21.
 
-### 3.8 STO — magacin (S-13, BR-140 do BR-144)
+### 3.8 STO — magacin (S-13, BR-140 do BR-145)
 
 ### [STO-01] Unos nove robe iz kase
 - **Prioritet:** Visoko
@@ -1975,6 +1975,51 @@ Legenda: svaki test ima polje za rezultat. Popunjavajte ga dok radite.
   3. Datum se vraća na danas, a Način na Gotovina, i ne mogu se mijenjati.
 - **Gdje provjeriti:** UI; `/finance/expenses` (vlasnik)
 - [x] Prošlo  [ ] Palo  Napomena: **01.10.2026 — PROŠLO.** `storage.spec.ts` „D-95“ na produkcijskoj bazi: koraci 1 i 2 kako je opisano (provjereno i u bazi); korak 3 pokriva `0027_stock_in_fields` (Iz kase → danas, gotovina, otvorena smjena). Vidi §9.20.
+
+### [STO-14] Poravnanje stanja — manjak (E26, D-103)
+- **Prioritet:** Kritično
+- **Uloga / preduslovi:** menadžer (isto važi za vlasnika i admina); proizvod `Whey` sa nabavnom cijenom 28,00 € i stanjem 10
+- **Koraci:** 1) `/storage` → [Poravnaj stanje] za `Whey`. 2) Prebrojano stanje `5`. 3) Razlog `Oštećeno`, Napomena `Pukle kesice` → [Sačuvaj]. 4) [Prodaja] za `Whey`, količina `6`.
+- **Test podaci:** kao gore
+- **Očekivani rezultat:** 1) dijalog „Poravnanje stanja“ sa „Stanje u aplikaciji: 10“; [Sačuvaj] onemogućeno. 2) „Razlika: -5 (manjak)“; razlozi Oštećeno, Istekao rok, Potrošeno u teretani, Manjak pri popisu, Ostalo. 3) „Stanje je poravnano.“; Stanje `5`; u bazi kretanje `adjust` −5, prebrojano 5, nabavna 28,00, bez smjene i bez troška. 4) „Nema dovoljno na stanju (stanje: 5).“
+- **Gdje provjeriti:** UI; Finansije → Dnevnik izmjena (Magacin: „Poravnanje stanja“)
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `stock-adjustment.spec.ts` „E26: the manager counts five of ten bags“ (desktop i mobilni, produkcijska baza, svoja E2E teretana): koraci 1–3 i red u bazi kako je opisano. Korak 4 i Dnevnik izmjena: pgTAP `0034_stock_adjustment` (E_STOCK_INSUFFICIENT|5, red u `audit_log`). Korak 4 nije prođen kroz UI.
+
+### [STO-15] Poravnanje stanja — višak, isto stanje, razlog „Ostalo“ (D-103)
+- **Prioritet:** Visoko
+- **Uloga / preduslovi:** menadžer; proizvod sa stanjem 10
+- **Koraci:** 1) [Poravnaj stanje] → Prebrojano `12`. 2) Prebrojano `10`. 3) Prebrojano `5`, Razlog `Ostalo` bez napomene → [Sačuvaj].
+- **Test podaci:** —
+- **Očekivani rezultat:** 1) „Razlika: +2 (višak)“; ispod napomena „Ako je stigla nova roba, unesite je preko „Nova roba“ – tako se evidentira i trošak nabavke.“; razlozi samo Višak pri popisu i Ostalo. 2) „Prebrojano stanje je isto kao stanje u aplikaciji.“, [Sačuvaj] onemogućeno. 3) ispod napomene „Za razlog „Ostalo“ upišite napomenu (3–200 znakova).“, ništa nije upisano.
+- **Gdje provjeriti:** UI
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `stock-adjustment.spec.ts` „E26: the manager counts five of ten bags“ prolazi sva tri koraka prije čuvanja manjka. Sačuvan višak (+2, Ostalo sa napomenom) i odbijeni Oštećeno za višak: pgTAP `0034`.
+
+### [STO-16] Stanje se promijenilo dok se brojalo (E_STOCK_CHANGED, D-103)
+- **Prioritet:** Visoko
+- **Uloga / preduslovi:** menadžer na `/storage`, recepcioner na drugom računaru; proizvod sa stanjem 5
+- **Koraci:** 1) Menadžer otvori [Poravnaj stanje] (vidi stanje 5). 2) Recepcioner u međuvremenu unese [Nova roba] od 1 komada (ili prodaju). 3) Menadžer upiše `3` → [Sačuvaj].
+- **Test podaci:** —
+- **Očekivani rezultat:** 3) ispod polja „Stanje se u međuvremenu promijenilo (sada: 6). Prebrojte ponovo.“; dijalog sada prikazuje „Stanje u aplikaciji: 6“; poravnanje nije upisano.
+- **Gdje provjeriti:** UI; baza
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `stock-adjustment.spec.ts` „BR-145: a count made while the stock changed is counted again“ (ulaz robe upisan pored ekrana, kao sa druge kase): poruka, novo stanje 6 u dijalogu, i dalje samo jedno poravnanje u bazi. pgTAP `0034`: `E_STOCK_CHANGED|10`.
+
+### [STO-17] Ko poravnava i poništava; Manjak robe kod vlasnika (D-103)
+- **Prioritet:** Kritično
+- **Uloga / preduslovi:** recepcioner, menadžer i vlasnik iste teretane; poravnanje iz STO-14 (−5 × 28,00 €) danas
+- **Koraci:** 1) Recepcioner: `/storage`. 2) Vlasnik: `/finance?period=today`. 3) Vlasnik: `/finance/storage?period=today`. 4) Vlasnik: u „Poravnanja stanja“ [Poništi] sa razlogom `Pogrešno prebrojano`. 5) Menadžer: Finansije → Pregled, Danas.
+- **Test podaci:** —
+- **Očekivani rezultat:** 1) nema dugmeta [Poravnaj stanje]. 2) u „Bilans uspjeha“ red „Manjak robe 140,00 €“ ispod „Trošak prodate robe“; Bruto dobit i Profit niži za 140,00 €; Novčani tok bez promjene; Vrijednost zalihe niža za 140,00 €. 3) red proizvoda: Poravnanje (kom) `-5`, Manjak robe `140,00 €`; lista „Poravnanja stanja“: Stanje prije 10, Prebrojano 5, Razlika -5, Oštećeno sa napomenom, 140,00 €, ime menadžera. 4) red precrtan sa „Poništeno: Pogrešno prebrojano“; stanje se vraća (+5); Manjak robe 0,00 €. 5) menadžer ne vidi Manjak robe; Troškovi su samo plaćeno.
+- **Gdje provjeriti:** UI
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `stock-adjustment.spec.ts` (desktop i mobilni): koraci 1–4 kako je opisano (vlasnikov dan: Manjak robe 140,00 €, Bruto dobit i Profit -140,00 €, Neto promjena novca 0,00 €, zaliha 168,00 € za 6 komada; S-20 red i lista; poništavanje vraća stanje na 11). Korak 5 i to da menadžer ne poništava: pgTAP `0034` (menadžerov Pregled: prihod 0,00, troškovi 280,00; poništavanje E_FORBIDDEN). Korak 5 nije prođen kroz UI.
+
+### [STO-18] Upozorenje pri poništavanju starijeg poravnanja (D-103)
+- **Prioritet:** Srednje
+- **Uloga / preduslovi:** vlasnik; isti proizvod danas poravnan dva puta (11 → 10, zatim 10 → 9)
+- **Koraci:** 1) `/finance/storage?period=today` → u „Poravnanja stanja“ [Poništi] na starijem (Prebrojano 10). 2) [Otkaži], pa [Poništi] na novijem (Prebrojano 9).
+- **Test podaci:** —
+- **Očekivani rezultat:** 1) u dijalogu upozorenje „Ovaj proizvod je poslije ovog poravnanja ponovo prebrojan. Ako ga poništite, stanje se više neće slagati sa posljednjim brojanjem.“ 2) bez upozorenja.
+- **Gdje provjeriti:** UI
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `stock-adjustment.spec.ts` „D-103: voiding a count made before another one warns“ (desktop).
 
 ---
 
@@ -4348,6 +4393,41 @@ Novi slučajevi: REC-24 i REC-25. REC-03 (G+T bira vrstu) važi i dalje.
 | pgTAP sa migracijom 0052 u transakciji koja se poništava (produkcija) | **34/34 fajla**; novo `0033_check_in_without_question` (27 provjera); `0007` (53): dvije članarine za teretanu više ne traže izbor, a izbor druge članarine i Teretana za člana sa samo Grupnim provjeravaju se na S-03a |
 | Migracija 0052 na produkciji | primijenjena 07.10.2026 uz odobrenje; provjereno: nove funkcije interne (`authenticated` i `anon` bez prava), `start_check_in` i `register_member` koriste `auto_check_in`, jedna `register_member`, prava RPC-ova ista. Poslije toga `npm run test:db` **34/34** |
 | E2E na produkcijskoj bazi, desktop, svaki spec u svojoj E2E teretani koju briše: `check-in-without-question` (3), `pause-gym-fee` (3), `reception` (4) | **10 prošlo**. Poslije: u bazi je samo teretana KP Fitness |
+
+### 9.25 Dopuna — poravnanje stanja magacina (D-103), 21.10.2026
+
+**D-103 (zahtjev 21.10.2026):** kad se stanje u aplikaciji i na polici razlikuju (npr. 10 kesica
+whey proteina u aplikaciji, 5 na polici), vlasnik, admin ili menadžer na Magacinu pritisne
+[Poravnaj stanje] i upiše prebrojano stanje; recepcioner to ne može. Razlika se upisuje kao
+kretanje `adjust` sa predznakom, po trenutnoj nabavnoj cijeni, sa razlogom sa fiksne liste
+(manjak: Oštećeno, Istekao rok, Potrošeno u teretani, Manjak pri popisu, Ostalo; višak: Višak pri
+popisu, Ostalo; Ostalo traži napomenu). Poravnanje nije novac: nema troška, smjene ni novčanog
+toka. Manjak umanjuje profit kao posebna stavka **„Manjak robe“** u Bilansu uspjeha, u kartici
+Troškovi i na grafikonu; višak ga povećava; Zarada na magacinu ostaje marža na prodaji. S-20
+prikazuje poravnanja po proizvodu i listu sa [Poništi] (samo vlasnik i admin). Migracije 0053
+(nova vrijednost tipa) i 0054 (kolone, provjere, `adjust_stock`, nove verzije `product_stock`,
+`product_stock_at`, `void_stock_movement`, `fin_statement`, `fin_summary`, `fin_chart`,
+`fin_storage`).
+
+Novi slučajevi: STO-14 do STO-18. Primjer E26 u doc 03. Po odgovoru 21.10.2026: razlog ostaje unaprijed izabran („Manjak/Višak pri popisu“), a poništavanje poravnanja poslije kojeg je proizvod ponovo prebrojan prvo upozorava (STO-18).
+
+**Teretana radi:** postojeći podaci nisu mijenjani ni brisani. Obje migracije samo dodaju; prije
+primjene 0054 ista migracija je pokrenuta nad živim podacima u transakciji koja se poništava i
+upoređeni su izvještaji prije i poslije.
+
+| Provjera 21.10.2026 | Rezultat |
+|---|---|
+| Migracija 0053 na produkciji (samo nova vrijednost `adjust` tipa `stock_move`) | primijenjena; nijedan red ni funkcija nisu dirani |
+| 0054 nad živim podacima u transakciji koja se poništava: `product_stock` i `product_stock_at` (danas, 1. u mjesecu, 30.09.) za svih 43 proizvoda, `storage_products`, `fin_statement`, `fin_summary` i `fin_storage` za ovaj mjesec, prošli mjesec, ovu godinu i od 2020, `fin_chart` za godinu i mjesec | **sve isto** (nova polja su 0 / prazna); migracija je trajala 277 ms, transakcija poništena |
+| pgTAP sa 0054 u transakciji koja se poništava | novo `0034_stock_adjustment` (49 provjera) i `0009`, `0010`, `0012`, `0018`, `0019`, `0023`, `0024`, `0027` — sve prošlo |
+| Migracija 0054 na produkciji | primijenjena; u bazi i dalje 47 ulaza i 158 prodaja, nijedan poništen; `npm run test:db` **35/35** |
+| `npm run lint`, `npm run typecheck`, `npm run test` | PROŠLO (231 test, 1 preskočen). Jednom je `tests/integration/backup.test.ts` pao bez ponavljanja (sam i u ponovljenom punom pokretanju prolazi); test teretana koju je ostavio obrisana |
+| Pregled koda (agent), 21.10.2026 | bez kritičnih nalaza. Ispravljeno: dokumenti 02, 05 i 06 (Profit, Bilans i kartica Troškovi sa Manjkom robe), razlog u dijalogu se vraća na „Manjak/Višak pri popisu“ kad promjena broja okrene smjer, napomena se broji u znakovima kao u bazi (emoji), grafikon tačno čita negativan iznos, `0034` provjerava i prava (51 provjera). Bez izmjene baze |
+| `npm run test:db` poslije pregleda | **35/35** |
+| E2E `stock-adjustment` (desktop) poslije pregleda i upozorenja (STO-18) | **5 prošlo** |
+| E2E na produkcijskoj bazi, desktop i mobilni, svoja E2E teretana koju briše: `stock-adjustment` (4 × 2) | **8 prošlo** |
+| E2E `storage` (desktop) poslije dvije nove kolone na S-20 | **5 prošlo** (E23 i `test-plan-medium-b` E2E-08 dopunjeni sa „0“ i „0,00 €“ prije kolone Stanje) |
+| Cijeli E2E (`npm run test:e2e`) | **nije završen:** prekinut 21.10.2026 na zahtjev, jer slijede nove izmjene; pokreće se poslije njih. Do prekida 115 testova prošlo, jedan pao (E23, popravljen gore). Test teretana iz prekinutog testa obrisana; u bazi je samo KP Fitness |
 
 *Kraj plana. Novi rezultati upisani su uz slučajeve; neoznačeni kvadratići nisu automatski prolaz.*
 

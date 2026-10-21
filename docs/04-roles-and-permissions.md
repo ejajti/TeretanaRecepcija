@@ -46,8 +46,9 @@
 | P-40 | View products, stock level, purchase and sale price | ✓ | ✓ | ✓ | BR-144 |
 | P-41 | Stock-in (enter the invoice purchase price); sale | ✓ | ✓ | ✓ | BR-141, BR-142 |
 | P-42 | Add or edit products, change the sale price (on S-13 Magacin) | ✓ | ✓ (D-76) | ✗ | BR-140, D-76 |
-| P-43 | Void a stock-in | ✓ | ✗ | ✗ | BR-095 |
-| P-44 | Stock value, cost of goods sold, bar profit, sales history beyond today | ✓ | ✗ | ✗ | BR-144, BR-153, BR-159 |
+| P-43 | Void a stock-in or a stock adjustment | ✓ | ✗ | ✗ | BR-095, BR-145 |
+| P-44 | Stock value, cost of goods sold, Manjak robe, bar profit, sales history beyond today | ✓ | ✗ | ✗ | BR-144, BR-145, BR-153, BR-159 |
+| P-45 | Adjust the stock level to what was counted ([Poravnaj stanje] on S-13) | ✓ | ✓ (D-103) | ✗ | BR-145, D-103 |
 | **Statistics and finance** | | | | | |
 | P-50 | Visit statistics page (S-15) | ✓ | ✓ | ✗ | D-40 |
 | P-51 | Finance dashboard, income, expenses, profit, income statement and cash flow (S-16…S-21) | ✓ | Pregled, Troškovi and Smjene only: Prihod and Troškovi without salaries, for Danas, Ova sedmica or Ovaj mjesec; never profit, the statement or the cash flow (D-80, D-92) | ✗ | BR-157, BR-158, D-80, D-92 |

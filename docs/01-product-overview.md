@@ -59,7 +59,7 @@ It also gives the owner a private view of all finances.
 | F-12 | Day passes |
 | F-13 | Payment correction and voiding |
 | F-14 | Reception cash expenses |
-| F-15 | Magacin: stock-in and sales |
+| F-15 | Magacin: stock-in, sales and stock adjustments (D-103) |
 | F-16 | Shift close and shift report (PDF and email) |
 | F-17 | Owner finance dashboard |
 | F-18 | Owner expenses and expense categories |
@@ -98,7 +98,7 @@ Full details are in doc 05.
   - subscription billing.
 
   The **database is multi-tenant ready** (`gym_id` everywhere), but only one gym exists, created by the seed script (D-01).
-- **Other:** stock-take or stock adjustments, low-stock alerts, owner-facing data export (the weekly backup in F-28 is the only export), idle screen lock, two-factor authentication. See the suggestions in doc 10.
+- **Other:** a stock-take of all products at once (a single product's count is D-103), low-stock alerts, owner-facing data export (the weekly backup in F-28 is the only export), idle screen lock, two-factor authentication. See the suggestions in doc 10.
 
 ## 7. Success criteria (verifiable)
 1. **Check-in speed.** A receptionist can check in a member with an active gym-only membership using **one scan and zero clicks**. The result is shown ≤ 1 s after the scan (p95).

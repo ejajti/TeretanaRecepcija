@@ -23,10 +23,20 @@ export type Chart = {
   profit: string;
 };
 
-/** BR-003: decimal text to cents, without ever building a float. */
+/**
+ * BR-003: decimal text to cents, without ever building a float. The sign applies to the
+ * whole amount: a day whose goods found (D-103) outweigh its costs is "-56.50".
+ */
 function cents(value: string): number {
-  const [whole, fraction = ""] = value.replace(",", ".").split(".");
-  return Number(whole) * 100 + Number(fraction.padEnd(2, "0").slice(0, 2));
+  const text = value.trim();
+  const sign = text.startsWith("-") ? -1 : 1;
+  const [whole, fraction = ""] = text
+    .replace(/^[-+]/, "")
+    .replace(",", ".")
+    .split(".");
+  return (
+    sign * (Number(whole) * 100 + Number(fraction.padEnd(2, "0").slice(0, 2)))
+  );
 }
 
 // Axis ticks are whole euros: the exact figures live in the hover line and the totals.
@@ -70,7 +80,10 @@ export function IncomeChart({ chart }: { chart: Chart }) {
   );
   const peak = Math.max(...values, 1);
   // A round ceiling so the gridlines land on readable numbers.
-  const step = Math.pow(10, Math.max(0, String(Math.round(peak / 4)).length - 1));
+  const step = Math.pow(
+    10,
+    Math.max(0, String(Math.round(peak / 4)).length - 1),
+  );
   const ceiling = Math.max(Math.ceil(peak / step) * step, step);
 
   const width = 720;

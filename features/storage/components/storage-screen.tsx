@@ -28,7 +28,13 @@ import { Table, TableWrapper, Td, Th } from "@/components/ui/table";
 import { formatMoney, parseMoneyInput } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
 import { cn } from "@/lib/utils";
-import { receiveStock, sellProduct } from "../actions";
+import { adjustStock, receiveStock, sellProduct } from "../actions";
+import {
+  adjustReasonLabel,
+  reasonsFor,
+  signedQuantity,
+  type AdjustReason,
+} from "../adjust";
 import { ProductDialog, type EditableProduct } from "./product-editor";
 
 export type StorageProduct = {
@@ -53,7 +59,10 @@ function times(price: string, quantity: number): string | null {
   }
 }
 
-type Dialogs = { kind: "sale" | "stockIn"; product: StorageProduct } | null;
+type Dialogs = {
+  kind: "sale" | "stockIn" | "adjust";
+  product: StorageProduct;
+} | null;
 
 /** An active product as the edit dialog needs it. */
 function editable(product: StorageProduct): EditableProduct {
@@ -66,17 +75,21 @@ function editable(product: StorageProduct): EditableProduct {
  *
  * D-76: S-26 Proizvodi is gone. Every role but the receptionist (`canEdit`) adds and
  * edits products here, and finds the deactivated ones under the table to bring back.
+ * D-103 (P-45): the same roles correct the stock level to what was counted.
  */
 export function StorageScreen({
   products,
   inactive,
   canEdit,
+  canAdjust,
   today,
   canBackdate,
 }: {
   products: StorageProduct[];
   inactive: EditableProduct[];
   canEdit: boolean;
+  /** D-103 (P-45): the owner, the admin and the manager. */
+  canAdjust: boolean;
   /** BR-001: the gym's today, the default and the latest payment day of Nova roba. */
   today: string;
   /** D-95: the owner and the admin may give Nova roba an earlier payment day. */
@@ -160,6 +173,17 @@ export function StorageScreen({
                       >
                         {me.storage.stockIn}
                       </Button>
+                      {canAdjust ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          aria-label={`${me.storage.adjust} ${product.name}`}
+                          onClick={() => setDialog({ kind: "adjust", product })}
+                        >
+                          {me.storage.adjust}
+                        </Button>
+                      ) : null}
                       {canEdit ? (
                         <Button
                           type="button"
@@ -260,7 +284,162 @@ export function StorageScreen({
           onClose={close}
         />
       ) : null}
+      {dialog?.kind === "adjust" ? (
+        <AdjustDialog
+          // The stock level as the page has it now: refreshed after E_STOCK_CHANGED.
+          product={
+            products.find((product) => product.id === dialog.product.id) ??
+            dialog.product
+          }
+          onClose={close}
+        />
+      ) : null}
     </>
+  );
+}
+
+/**
+ * S-13 Poravnanje stanja (D-103, BR-145): what was counted, the difference to the stock
+ * level, and why. Goods found offer only a count or Ostalo, with a reminder that a
+ * delivery is entered through Nova roba, which also records what it cost. The stock
+ * level shown goes with the form, so a sale made meanwhile is caught (E_STOCK_CHANGED).
+ */
+function AdjustDialog({
+  product,
+  onClose,
+}: {
+  product: StorageProduct;
+  onClose: () => void;
+}) {
+  const [state, onSubmit, pending] = useFormAction(adjustStock);
+  const [counted, setCounted] = useState("");
+  const [reason, setReason] = useState<AdjustReason>("count");
+  useActionToast(state, onClose);
+  const errors = state.fieldErrors ?? {};
+
+  const count = counted.trim() === "" ? Number.NaN : Number(counted);
+  const valid = Number.isInteger(count) && count >= 0 && count <= 10000;
+  const difference = valid ? count - product.stock : null;
+  const options = reasonsFor(difference ?? 0);
+  // A reason that no longer fits the direction falls back to the stock count.
+  const chosen = options.includes(reason) ? reason : "count";
+
+  /** A count that turns goods short into goods found drops a reason that no longer fits. */
+  function changeCount(value: string) {
+    setCounted(value);
+    const next = Number(value);
+    if (
+      value.trim() !== "" &&
+      Number.isInteger(next) &&
+      !reasonsFor(next - product.stock).includes(reason)
+    )
+      setReason("count");
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{me.storage.adjustTitle}</DialogTitle>
+          <DialogDescription>{product.name}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+          <input type="hidden" name="productId" value={product.id} />
+          <input type="hidden" name="expected" value={product.stock} />
+          <FormError>{state.error}</FormError>
+          <p className="text-sm" data-testid="adjust-stock">
+            {me.storage.adjustStock.replace("{qty}", String(product.stock))}
+          </p>
+          <div className="grid gap-1.5">
+            <Label htmlFor="adjust-counted">{me.storage.adjustCounted}</Label>
+            <Input
+              id="adjust-counted"
+              name="counted"
+              type="number"
+              min={0}
+              max={10000}
+              inputMode="numeric"
+              value={counted}
+              onChange={(event) => changeCount(event.target.value)}
+              aria-invalid={Boolean(errors.counted)}
+              aria-describedby="adjust-counted-error"
+            />
+            <FieldError id="adjust-counted-error">{errors.counted}</FieldError>
+          </div>
+          <p
+            className={cn(
+              "text-lg font-semibold",
+              difference !== null && difference < 0 && "text-danger",
+            )}
+            aria-live="polite"
+          >
+            {difference === null
+              ? null
+              : difference === 0
+                ? me.storage.adjustSame
+                : (difference < 0
+                    ? me.storage.adjustShort
+                    : me.storage.adjustOver
+                  ).replace("{qty}", signedQuantity(difference))}
+          </p>
+          {difference !== null && difference > 0 ? (
+            <p className="rounded-lg border p-3 text-sm text-muted-foreground">
+              {me.storage.adjustSurplusHint}
+            </p>
+          ) : null}
+          <div className="grid gap-1.5">
+            <Label htmlFor="adjust-reason">{me.storage.adjustReason}</Label>
+            <Select
+              id="adjust-reason"
+              name="reason"
+              value={chosen}
+              onChange={(event) =>
+                setReason(event.target.value as AdjustReason)
+              }
+              aria-invalid={Boolean(errors.reason)}
+              aria-describedby="adjust-reason-error"
+            >
+              {options.map((option) => (
+                <option key={option} value={option}>
+                  {adjustReasonLabel(option, difference ?? 0)}
+                </option>
+              ))}
+            </Select>
+            <FieldError id="adjust-reason-error">{errors.reason}</FieldError>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="adjust-note">{me.storage.adjustNote}</Label>
+            <Input
+              id="adjust-note"
+              name="note"
+              maxLength={200}
+              aria-invalid={Boolean(errors.note)}
+              aria-describedby="adjust-note-hint adjust-note-error"
+            />
+            <p id="adjust-note-hint" className="text-xs text-muted-foreground">
+              {me.storage.adjustNoteHint}
+            </p>
+            <FieldError id="adjust-note-error">{errors.note}</FieldError>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                {me.common.cancel}
+              </Button>
+            </DialogClose>
+            <Button
+              type="submit"
+              disabled={pending || difference === null || difference === 0}
+            >
+              {pending ? (
+                <Loader2 aria-hidden="true" className="animate-spin" />
+              ) : null}
+              {me.common.save}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -579,6 +579,34 @@ export const me = {
     saleDescription: "{product} × {qty}",
     correctSaleTitle: "Ispravka prodaje",
     stockInExpense: "Trošak nabavke poništava vlasnik zajedno sa nabavkom.",
+    // D-103 (BR-145): Poravnanje stanja, for the owner, the admin and the manager.
+    adjust: "Poravnaj stanje",
+    adjustTitle: "Poravnanje stanja",
+    adjustStock: "Stanje u aplikaciji: {qty}",
+    adjustCounted: "Prebrojano stanje",
+    adjustCountedInvalid: "Unesite prebrojano stanje od 0 do 10.000.",
+    adjustShort: "Razlika: {qty} (manjak)",
+    adjustOver: "Razlika: {qty} (višak)",
+    adjustSame: "Prebrojano stanje je isto kao stanje u aplikaciji.",
+    adjustReason: "Razlog",
+    adjustReasonInvalid: "Izaberite razlog.",
+    adjustNote: "Napomena",
+    adjustNoteHint: "Obavezna za razlog „Ostalo“.",
+    adjustNoteRequired: "Za razlog „Ostalo“ upišite napomenu (3–200 znakova).",
+    adjustNoteInvalid: "Napomena može imati najviše 200 znakova.",
+    adjustSurplusHint:
+      "Ako je stigla nova roba, unesite je preko „Nova roba“ – tako se evidentira i trošak nabavke.",
+    adjusted: "Stanje je poravnano.",
+    adjustReasons: {
+      damaged: "Oštećeno",
+      expired: "Istekao rok",
+      internal_use: "Potrošeno u teretani",
+      countShort: "Manjak pri popisu",
+      countOver: "Višak pri popisu",
+      // Dnevnik izmjena names the reason without the direction.
+      count: "Razlika pri popisu",
+      other: "Ostalo",
+    },
   },
   // S-10 Dnevna karta (F-12).
   dayPass: {
@@ -716,6 +744,8 @@ export const me = {
     incomeOther: "Ostalo",
     incomeTotal: "Ukupni prihodi",
     cogs: "Trošak prodate robe",
+    // D-103 (BR-145): goods short at a stock count, a cost of the period.
+    shrinkage: "Manjak robe",
     grossProfit: "Bruto dobit",
     operatingExpenses: "Operativni troškovi",
     operatingTotal: "Ukupno operativni troškovi",
@@ -900,6 +930,16 @@ export const me = {
     purchasePrice: "Nabavna cijena",
     voidStockIn: "Poništi",
     storageEmpty: "Nema prometa u izabranom periodu.",
+    // D-103: the stock adjustments of the period on S-20.
+    adjustQuantity: "Poravnanje (kom)",
+    adjustments: "Poravnanja stanja",
+    adjustmentsEmpty: "Nema poravnanja stanja u izabranom periodu.",
+    adjustBefore: "Stanje prije",
+    adjustCounted: "Prebrojano",
+    adjustDifference: "Razlika",
+    adjustReason: "Razlog",
+    adjustRecounted:
+      "Ovaj proizvod je poslije ovog poravnanja ponovo prebrojan. Ako ga poništite, stanje se više neće slagati sa posljednjim brojanjem.",
     // S-21 Dnevnik izmjena (F-24).
     auditTitle: "Dnevnik izmjena",
     time: "Vrijeme",
@@ -1014,6 +1054,9 @@ export const me = {
       invoice_number: "Račun",
       vat_included: "PDV uračunat",
       type: "Promet",
+      // D-103: an adjustment's count and reason.
+      counted_qty: "Prebrojano stanje",
+      adjust_reason: "Razlog poravnanja",
       unit_cost: "Nabavna cijena",
       unit_price: "Prodajna cijena",
       duration_value: "Trajanje",
@@ -1054,6 +1097,7 @@ export const me = {
       planPersonal: "Personalni",
       stockIn: "Ulaz robe",
       stockOut: "Prodaja",
+      stockAdjust: "Poravnanje stanja",
       days: "dana",
       months: "mjeseci",
       logoSet: "postavljen",
@@ -1165,6 +1209,9 @@ export const me = {
     E_STOCK_INSUFFICIENT: "Nema dovoljno na stanju (stanje: {qty}).",
     E_STOCK_NEGATIVE: "Poništavanje nije moguće – stanje bi bilo negativno.",
     E_STOCK_COST_INVALID: "Nabavna cijena mora biti najmanje 0,01 €.",
+    // D-103: a sale or a stock-in changed the stock while it was being counted.
+    E_STOCK_CHANGED:
+      "Stanje se u međuvremenu promijenilo (sada: {qty}). Prebrojte ponovo.",
     E_CATEGORY_NOT_ALLOWED: "Ova kategorija nije dozvoljena.",
     E_SELF_DEACTIVATE: "Ne možete deaktivirati sopstveni nalog.",
     E_LAST_ACCOUNT:

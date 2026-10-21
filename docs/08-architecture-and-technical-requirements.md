@@ -152,6 +152,7 @@ RPCs raise `P0001` with the message `E_<CODE>`. `lib/errors.ts` maps each code t
 | E_STOCK_INSUFFICIENT | `Nema dovoljno na stanju (stanje: {qty}).` |
 | E_STOCK_NEGATIVE | `Poništavanje nije moguće – stanje bi bilo negativno.` |
 | E_STOCK_COST_INVALID | `Nabavna cijena mora biti najmanje 0,01 €.` |
+| E_STOCK_CHANGED | `Stanje se u međuvremenu promijenilo (sada: {qty}). Prebrojte ponovo.` (D-103: the stock level changed while it was counted; the detail carries it) |
 | E_CATEGORY_NOT_ALLOWED | `Ova kategorija nije dozvoljena.` |
 | E_SELF_DEACTIVATE | `Ne možete deaktivirati sopstveni nalog.` (D-60) |
 | E_LAST_ACCOUNT | `Mora ostati bar jedan aktivan nalog ove uloge. Prvo dodajte zamjenu.` (D-60) |

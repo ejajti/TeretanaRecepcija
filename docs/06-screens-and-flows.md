@@ -182,12 +182,13 @@ An `admin` sees everything an owner sees (D-58).
 **Empty text:** `Danas još nema uplata.`
 
 ## S-13 Magacin — `/storage`
-- **Table:** Proizvod, Stanje, Nabavna cijena, Prodajna cijena, and actions [Prodaja] [Nova roba]. Active products only.
+- **Table:** Proizvod, Stanje, Nabavna cijena, Prodajna cijena, and actions [Prodaja] [Nova roba], and for every role but the receptionist [Poravnaj stanje] (D-103) and [Uredi]. Active products only.
 - **Products (D-76, P-42), for every role but the receptionist:**
   - [Dodaj proizvod] beside the title, and [Uredi] on each row. Both open the product dialog: Naziv, Nabavna cijena (€), Prodajna cijena (€), Aktivan, with the info text `Promjena cijene važi samo za nove prodaje.` (BR-004, BR-140).
   - Under the table, when any product is inactive, [Prikaži neaktivne (N)] shows the table `Neaktivni proizvodi` (Proizvod, Nabavna cijena, Prodajna cijena, [Uredi]). Ticking Aktivan there brings a product back. The button then reads [Sakrij neaktivne (N)].
 - **Prodaja dialog:** quantity (max = stock), `Ukupno`, and the method buttons.
 - **Nova roba dialog (D-95):** `Količina`, `Nabavna cijena po komadu (sa fakture)` (minimum €0.01; validation: `Nabavna cijena mora biti najmanje 0,01 €.`) and `Ukupno`, then the fields of S-17 [Novi trošak] without `Kategorija`: `Opis` (prefilled `Nabavka: <proizvod> × <količina>`), `Datum` (owner and admin only; disabled at today for the manager and the receptionist), `Način` (Gotovina / Platna kartica / Van kase), `PDV uračunat`, `Dobavljač`, `Račun` and `Iz kase` (disabled without an open shift). BR-141.
+- **Poravnanje stanja dialog (D-103, BR-145), owner, admin and manager:** `Stanje u aplikaciji: <N>`, `Prebrojano stanje` (0–10,000), the live line `Razlika: -5 (manjak)` / `Razlika: +2 (višak)` / `Prebrojano stanje je isto kao stanje u aplikaciji.`, for goods found the note `Ako je stigla nova roba, unesite je preko „Nova roba“ – tako se evidentira i trošak nabavke.`, `Razlog` (goods short: Oštećeno, Istekao rok, Potrošeno u teretani, Manjak pri popisu, Ostalo; goods found: Višak pri popisu, Ostalo), `Napomena` with the hint `Obavezna za razlog „Ostalo“.`, and [Otkaži] [Sačuvaj]. [Sačuvaj] is disabled until the count differs. On success: `Stanje je poravnano.` A count that no longer matches shows E_STOCK_CHANGED under `Prebrojano stanje`, and the dialog shows the stock level now.
 - **Empty text:** `Nema proizvoda. Dodaje ih vlasnik ili menadžer.`
 
 ## S-14 Close shift — `/shift/close` (receptionist)
@@ -211,9 +212,9 @@ An `admin` sees everything an owner sees (D-58).
 
 ## S-16 Finance dashboard — `/finance` (owner)
 - **Content:** as in US-17.1.
-- **Cards:** Prihod, Troškovi, Profit, Zarada na magacinu. For the owner, Troškovi is the cost of goods sold plus the operating expenses (BR-151 to BR-153, D-92).
+- **Cards:** Prihod, Troškovi, Profit, Zarada na magacinu. For the owner, Troškovi is the cost of goods sold, Manjak robe (D-103) and the operating expenses (BR-151 to BR-153, D-92).
 - **Statement and cash flow (D-92, owner only):** under the cards, two blocks side by side (stacked on a phone):
-  - `Bilans uspjeha`: `Prihodi` with Članarine, Treninzi (grupni i personalni), Prodaja iz magacina, Ostalo, then `Ukupni prihodi`, `Trošak prodate robe`, `Bruto dobit`, `Operativni troškovi` one line per category (`Nema operativnih troškova.` when none) with `Ukupno operativni troškovi`, and `Profit`, signed and coloured;
+  - `Bilans uspjeha`: `Prihodi` with Članarine, Treninzi (grupni i personalni), Prodaja iz magacina, Ostalo, then `Ukupni prihodi`, `Trošak prodate robe`, `Manjak robe` (BR-145, D-103), `Bruto dobit`, `Operativni troškovi` one line per category (`Nema operativnih troškova.` when none) with `Ukupno operativni troškovi`, and `Profit`, signed and coloured;
   - `Novčani tok`: Primljeno, Plaćena nova roba, Ostala plaćanja, `Neto promjena novca` (signed), and below it `Vrijednost zalihe na dan <dd.mm.yyyy>` with the BR-159 amount.
 - **Chart (D-68):** `Prihod i troškovi po mjesecima (€)`, January to December of the chosen year. Its own controls, independent of the period: **Godina** (default: the current year; back to the first year with any money) and **Mjesec** (`Cijela godina`, or one month up to the current one). A chosen month shows `Prihod i troškovi po danima (€)`. Months and days after today stay empty. Under the chart: `Ukupno za <godina | mjesec godina>: Prihod … · Troškovi … · Profit …`.
 - **Tables:**
@@ -245,10 +246,11 @@ An `admin` sees everything an owner sees (D-58).
 - **Manager (D-80):** the D-80 periods; no Email status column, no [PDF], no [Pošalji ponovo], and the open shift without [Zaključi smjenu] (P-12).
 
 ## S-20 Storage report — `/finance/storage` (owner)
-- **Per product (D-92):** Proizvod, Nabavna cijena, Prodajna cijena, and for the period Ulaz (kom), Nabavka, Prodato kom, Prihod, Trošak prodate robe, Bruto zarada, Marža; then Stanje and Vrijednost zalihe at the end of the period (BR-159), named above the table as `Stanje i vrijednost zalihe na dan <dd.mm.yyyy>.` A totals row `Ukupno` closes the table.
+- **Per product (D-92):** Proizvod, Nabavna cijena, Prodajna cijena, and for the period Ulaz (kom), Nabavka, Prodato kom, Prihod, Trošak prodate robe, Bruto zarada, Marža, Poravnanje (kom) (signed) and Manjak robe (D-103); then Stanje and Vrijednost zalihe at the end of the period (BR-159), named above the table as `Stanje i vrijednost zalihe na dan <dd.mm.yyyy>.` A totals row `Ukupno` closes the table.
 - **Other content:**
   - daily sales per product (table);
-  - a list of stock-ins with [Poništi].
+  - a list of stock-ins with [Poništi];
+  - `Poravnanja stanja` (D-103): Datum, Proizvod, Stanje prije, Prebrojano, Razlika, Razlog (with the note under it), Manjak robe, Unio/la, and [Poništi]; voided ones struck through with their reason. When the product was counted again after it (in the period or later), the void dialog shows `Ovaj proizvod je poslije ovog poravnanja ponovo prebrojan. Ako ga poništite, stanje se više neće slagati sa posljednjim brojanjem.` Empty text: `Nema poravnanja stanja u izabranom periodu.`
 
 ## S-21 Audit log — `/finance/audit` (owner)
 - **Controls:** filters for period, user and record type.

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PeriodPicker } from "@/features/finance/components/period-picker";
 import {
   StorageReport,
+  type AdjustmentRow,
   type DailyRow,
   type StockInRow,
   type StorageProductRow,
@@ -25,6 +26,8 @@ type Report = {
   totals: StorageTotals | null;
   daily: DailyRow[];
   stock_ins: StockInRow[];
+  /** D-103: the period's stock adjustments. */
+  adjustments: AdjustmentRow[];
 };
 
 /**
@@ -54,7 +57,40 @@ export default async function StorageReportPage({
     totals: null,
     daily: [],
     stock_ins: [],
+    adjustments: [],
   };
+
+  // D-103: an adjustment whose product was counted again later, in this period or
+  // after it. Voiding it would move the stock away from the latest count, so its void
+  // dialog warns. The owner reads every stock movement of the gym (doc 07 §6).
+  const open = data.adjustments.filter((row) => !row.voided_at);
+  const recounted: string[] = [];
+  if (open.length) {
+    const oldest = open.reduce(
+      (first, row) =>
+        Date.parse(row.created_at) < Date.parse(first) ? row.created_at : first,
+      open[0].created_at,
+    );
+    const { data: counts } = await supabase
+      .from("stock_movements")
+      .select("id, product_id, created_at")
+      .eq("type", "adjust")
+      .is("voided_at", null)
+      .gte("created_at", oldest)
+      .returns<{ id: string; product_id: string; created_at: string }[]>();
+    for (const row of open) {
+      const own = counts?.find((count) => count.id === row.id);
+      if (
+        own &&
+        counts?.some(
+          (count) =>
+            count.product_id === own.product_id &&
+            Date.parse(count.created_at) > Date.parse(own.created_at),
+        )
+      )
+        recounted.push(row.id);
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -65,6 +101,8 @@ export default async function StorageReportPage({
         stockDate={data.stock_date}
         daily={data.daily}
         stockIns={data.stock_ins}
+        adjustments={data.adjustments}
+        recounted={recounted}
       />
     </div>
   );

@@ -210,6 +210,32 @@ describe("auditChanges (N-21)", () => {
     ).toBe("Dnevna karta × 3");
   });
 
+  it("names a stock adjustment, its count and its reason (D-103)", () => {
+    const adjustment = row("stock_movements", "insert", null, {
+      product_id: "x1",
+      type: "adjust",
+      quantity: -5,
+      unit_cost: 28,
+      counted_qty: 5,
+      adjust_reason: "damaged",
+      note: "Pukle kesice",
+      shift_id: null,
+    });
+    expect(lines(adjustment)).toEqual(
+      expect.arrayContaining([
+        "Promet: Poravnanje stanja",
+        "Količina: -5",
+        "Nabavna cijena: 28,00 €",
+        "Prebrojano stanje: 5",
+        "Razlog poravnanja: Oštećeno",
+        "Napomena: Pukle kesice",
+      ]),
+    );
+    expect(auditSubject(adjustment, lookups)).toBe(
+      "Poravnanje stanja: Voda × -5",
+    );
+  });
+
   it("collects every referenced id once", () => {
     const ids = auditReferences([
       row(

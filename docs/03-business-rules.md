@@ -322,6 +322,7 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
   - Voiding a **membership** payment also voids the membership. Its linked visits become unlinked unpaid visits (`membership_id = null`, `is_unpaid = true`).
   - Voiding a **sale** returns the quantity to stock.
   - Voiding a **stock-in** (owner only) also voids its automatic expense. It is blocked if it would make stock negative: `Poništavanje nije moguće – stanje bi bilo negativno.`
+  - Voiding a **stock adjustment** (owner and admin only, D-103) puts the stock back where it was: goods short return, goods found are taken away, which is blocked with the same message if it would make stock negative.
 
 > ASSUMPTION (AS-15): Sales and stock-ins can be voided under these rules.
 
@@ -499,8 +500,16 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
   - unit cost = the current purchase price (snapshot);
   - blocked if quantity > stock: `Nema dovoljno na stanju (stanje: <X>).`;
   - requires an open shift.
-- **BR-143:** Stock level = Σ stock-in − Σ sales (non-voided). There is no opening stock; the first stock-in creates it.
-- **BR-144:** Managers and receptionists see product, stock level, purchase price and sale price. They never see stock value, profit, or totals over more than today.
+- **BR-143:** Stock level = Σ stock-in − Σ sales + Σ adjustments (non-voided; an adjustment carries its own sign, D-103). There is no opening stock; the first stock-in creates it.
+- **BR-144:** Managers and receptionists see product, stock level, purchase price and sale price. They never see stock value, profit, Manjak robe (BR-145), or totals over more than today.
+- **BR-145 (stock adjustment, Poravnanje stanja, D-103):** when the goods on the shelf and the stock level disagree, the owner, the admin or the manager enters on S-13 what was counted (P-45); never a receptionist.
+  - **Inputs:** the product (active), chosen by [Poravnaj stanje] in its row; `Prebrojano stanje` 0–10,000; `Razlog`; `Napomena`, at most 200 characters, required (3–200) for Ostalo.
+  - **Reasons:** for goods short (`manjak`) Oštećeno, Istekao rok, Potrošeno u teretani, Manjak pri popisu or Ostalo; for goods found (`višak`) only Višak pri popisu or Ostalo, and the dialog reminds: `Ako je stigla nova roba, unesite je preko „Nova roba“ – tako se evidentira i trošak nabavke.`
+  - **Recording:** the difference, counted − stock level, is written as a stock movement of type `adjust` with its sign, the count, the reason, the note and the product's current purchase price as its unit cost (AS-6). A count equal to the stock level writes nothing. The stock changes at once.
+  - **A count that no longer matches:** the stock level the dialog showed goes with the count. If a sale or a stock-in changed it meanwhile, nothing is written: `Stanje se u međuvremenu promijenilo (sada: <X>). Prebrojte ponovo.` (E_STOCK_CHANGED), and the dialog shows the stock level now.
+  - **Not money:** an adjustment has no expense, no payment and no shift, and changes neither expected cash (BR-115) nor the cash flow (BR-158); the goods were paid for at Nova roba.
+  - **Manjak robe** (owner only) for a period = Σ over non-voided adjustments, by local date, of −difference × unit cost: goods short are a cost, goods found lower it. It is a line of the income statement under the cost of goods sold, and lowers gross profit and profit (BR-152), the Troškovi card and the chart. Bar profit stays BR-153's margin on sales. The stock value follows the stock level (BR-159).
+  - **Voiding** follows BR-095 (owner and admin). When the same product was counted again after the adjustment, the void dialog warns: `Ovaj proizvod je poslije ovog poravnanja ponovo prebrojan. Ako ga poništite, stanje se više neće slagati sa posljednjim brojanjem.` Adjustments are audited (BR-096).
 
 ## 14. Finance calculations (owner only, except D-80)
 Buying goods and the cost of the goods sold are two different things (D-92). A stock-in moves money and stock; only a sale turns the purchase price of what was sold into a cost.
@@ -513,7 +522,7 @@ Buying goods and the cost of the goods sold are two different things (D-92). A s
 - **BR-151:** Expenses for a period, non-voided, by `spent_on`, are of two kinds (D-92):
   - **Nabavka robe (goods bought):** the automatic stock-in expenses (`stock_movement_id` set). They are money paid (BR-158) and stock (BR-159), never a cost in the profit.
   - **Operativni troškovi (operating expenses):** every other expense, trainer payouts and salaries included.
-- **BR-152:** Profit = income − cost of goods sold (BR-153) − operating expenses (BR-151). Bruto dobit (gross profit) = income − cost of goods sold.
+- **BR-152:** Profit = income − cost of goods sold (BR-153) − Manjak robe (BR-145, D-103) − operating expenses (BR-151). Bruto dobit (gross profit) = income − cost of goods sold − Manjak robe.
 - **BR-153:** Cost of goods sold (`Trošak prodate robe`) = Σ over non-voided sales of quantity × unit cost, by the sale's local date. The unit cost is the purchase price at the moment of the sale (BR-142, AS-6). Bar profit (`Zarada na magacinu`, shown separately) = Σ sales quantity × (unit price − unit cost).
 - **BR-154 (trainer revenue):** a membership payment belongs to the **membership's** trainer and to the month of `paid_on`. A group visit with another trainer changes only that other trainer's session count.
 - **BR-155 (shares per membership payment):**
@@ -540,13 +549,14 @@ Buying goods and the cost of the goods sold are two different things (D-92). A s
 | Isplaćeno | Sum of non-voided salary-category expenses with this trainer in that month |
 | Razlika | Za isplatu − Isplaćeno |
 
-- **BR-157:** No value from §14 is ever returned to managers or receptionists, with one exception (D-80): a manager receives BR-150 income and BR-151 expenses **without salary categories**, for today, this week or this month only. A manager's expenses are what was paid, stock-ins included, exactly as S-17 lists them. BR-152 profit, BR-153 cost of goods sold and bar profit, BR-154 to BR-156, BR-158 and BR-159 never reach a manager.
+- **BR-157:** No value from §14 is ever returned to managers or receptionists, with one exception (D-80): a manager receives BR-150 income and BR-151 expenses **without salary categories**, for today, this week or this month only. A manager's expenses are what was paid, stock-ins included, exactly as S-17 lists them. BR-145 Manjak robe, BR-152 profit, BR-153 cost of goods sold and bar profit, BR-154 to BR-156, BR-158 and BR-159 never reach a manager.
 - **BR-158 (cash flow, D-92):** for a period:
   - **Primljeno** = income (BR-150), cash and card;
   - **Plaćena nova roba** = the non-voided stock-in expenses by `spent_on`, sold or not;
   - **Ostala plaćanja** = all other non-voided expenses by `spent_on`;
   - **Neto promjena novca** = Primljeno − Plaćena nova roba − Ostala plaćanja.
-- **BR-159 (stock value at a date, D-92):** Σ over products of the stock level at the end of the day × the purchase price in effect then. For a period that reaches today, that is today's stock at the current purchase price (as on S-13). For an earlier end, the price is the unit cost of the last non-voided stock-in before the end of that day, or the current purchase price if there was none. Because the cost of a sale is the purchase price of the moment (AS-6), stock value equals "goods bought − cost of goods sold" only while the purchase price stays the same.
+  - A stock adjustment moves no money and is in none of these (BR-145).
+- **BR-159 (stock value at a date, D-92):** Σ over products of the stock level at the end of the day (adjustments included, BR-143) × the purchase price in effect then. For a period that reaches today, that is today's stock at the current purchase price (as on S-13). For an earlier end, the price is the unit cost of the last non-voided stock-in before the end of that day, or the current purchase price if there was none. Because the cost of a sale is the purchase price of the moment (AS-6), stock value equals "goods bought − cost of goods sold" only while the purchase price stays the same.
 
 ## 15. Notifications and jobs
 - **BR-160 (expiry reminder email):**
@@ -619,3 +629,4 @@ Buying goods and the cost of the goods sold are two different things (D-92). A s
 | E23 | Whey, purchase €28, sale €41; one sold | Income +€41; cost of goods sold €28; bar profit €13; stock −1 (BR-142, BR-153) |
 | E24 | 100 × €10 bought in a month; 40 sold | Cost of goods sold €400; Plaćena nova roba €1,000; stock value €600 (BR-151, BR-158, BR-159) |
 | E25 | A month with Članarine €8,500, Treninzi €2,000, sales €2,000 whose goods cost €1,100; operating expenses €7,400 (Plate 4,000, Zakup 2,000, Struja 500, Marketing 300, Ostalo 600); €2,500 of goods bought in the month; €3,200 of goods left | Income €12,500; gross profit €11,400; profit €4,000; cash flow: received €12,500, goods €2,500, other €7,400, net +€2,600; stock value €3,200 (D-92) |
+| E26 | Whey, purchase €28, stock 10; the manager counts 5 and chooses Oštećeno | Adjustment −5 at €28; stock 5; Manjak robe €140; gross profit, profit and stock value each €140 lower; cash flow unchanged; no expense; a sale of 6 is then blocked (BR-145, D-103) |

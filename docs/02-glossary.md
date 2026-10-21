@@ -79,9 +79,10 @@ Use these terms **exactly** in the documents, code and UI.
 | Goods bought | expense with `stock_movement_id` | Nabavka robe / Plaćena nova roba | A stock-in's automatic expense: money paid and stock gained, never a cost in the profit (BR-151, D-92). |
 | Operating expense | expense without `stock_movement_id` | Operativni troškovi | Every expense that is not goods bought, salaries and payouts included (BR-151). |
 | Cost of goods sold | computed | Trošak prodate robe | Σ sold quantity × the purchase price at the sale (BR-153). Owner only. |
-| Gross profit | computed | Bruto dobit | Income minus cost of goods sold. Owner only. |
-| Profit | computed | Profit | Income minus cost of goods sold minus operating expenses (BR-152, D-92). Owner only. |
-| Income statement | `fin_statement` | Bilans uspjeha | S-16's income, cost of goods sold, gross profit, operating expenses and profit. Owner only. |
+| Goods short | computed | Manjak robe | What the stock adjustments of a period cost: goods short at their purchase price, less goods found (BR-145, D-103). A cost in the income statement, never a payment. Owner only. |
+| Gross profit | computed | Bruto dobit | Income minus cost of goods sold and Manjak robe. Owner only. |
+| Profit | computed | Profit | Income minus cost of goods sold minus Manjak robe minus operating expenses (BR-152, D-92, D-103). Owner only. |
+| Income statement | `fin_statement` | Bilans uspjeha | S-16's income, cost of goods sold, Manjak robe (D-103), gross profit, operating expenses and profit. Owner only. |
 | Cash flow | `fin_statement` | Novčani tok | Primljeno, Plaćena nova roba, Ostala plaćanja and Neto promjena novca (BR-158). Owner only. |
 | Trainer share | computed | Za trenera | The part of a trainer-linked payment that belongs to the trainer. |
 | Gym share | computed | Za teretanu | Payment amount minus trainer share. |
@@ -109,9 +110,10 @@ Use these terms **exactly** in the documents, code and UI.
 | Magacin | `products` + `stock_movements` | Magacin | The bar storage module. |
 | Product | `product` | Proizvod | An item sold at the desk (currently "Voda"). |
 | Stock-in | `stock_movement.type = 'in'` | Nova roba | Recording delivered goods. |
+| Stock adjustment | `stock_movement.type = 'adjust'` | Poravnanje stanja | The stock level corrected to what was counted, with a reason; the movement is the signed difference (−5 short, +2 found) (BR-145, D-103). Owner, admin and manager. |
 | Purchase price | `unit_cost` / `current_purchase_price` | Nabavna cijena | Per-unit cost as written on the supplier's invoice. |
 | Sale price | `sale_price` / `unit_price` | Prodajna cijena | Per-unit price charged. Set by the owner only. |
-| Stock level | computed | Stanje | Total stock-in minus total sales (non-voided). |
+| Stock level | computed | Stanje | Total stock-in minus total sales plus the adjustments, with their sign (non-voided). |
 | Stock value | computed | Vrijednost zalihe | Stock level × purchase price, at the end of a day (BR-159): today at the current purchase price. Owner only. |
 | Bar profit | computed | Zarada na magacinu (S-16); Bruto zarada (per product, S-20) | Σ sales × (sale price − purchase price). Owner only. |
 | Margin | computed | Marža | Bruto zarada as a percentage of the sales income (S-20). Owner only. |

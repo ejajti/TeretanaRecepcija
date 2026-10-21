@@ -524,7 +524,8 @@ test("E2E-08: a new price, a new product — old sales keep 79 €, the new one 
   const izotonik = owner
     .locator("section", { has: owner.getByRole("heading", { name: "Magacin", exact: true }) })
     .getByRole("row", { name: /^E2E Izotonik/ });
-  // D-92: prices, what came in, what was sold and its cost, margin, then the stock.
+  // D-92: prices, what came in, what was sold and its cost, margin, the adjustments
+  // (D-103), then the stock.
   await expect(izotonik.getByRole("cell")).toHaveText([
     "E2E Izotonik",
     "0,60 €",
@@ -536,6 +537,8 @@ test("E2E-08: a new price, a new product — old sales keep 79 €, the new one 
     "0,60 €",
     "1,40 €",
     "70,0 %",
+    "0",
+    "0,00 €",
     "11",
     "6,60 €",
   ]);

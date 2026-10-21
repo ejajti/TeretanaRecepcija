@@ -260,6 +260,9 @@ test("E23 and D-92: a sale costs its purchase price; the goods bought are a paym
     "28,00 €",
     "13,00 €",
     "31,7 %",
+    // D-103: no adjustment today.
+    "0",
+    "0,00 €",
     "9",
     "252,00 €",
   ]);

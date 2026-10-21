@@ -9,7 +9,12 @@ import { fieldErrorsOf, rpcCode, rpcFailure } from "@/lib/rpc";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/action-state";
 import { voidSchema } from "@/features/payments/schemas";
-import { correctSaleSchema, saleSchema, stockInSchema } from "./schemas";
+import {
+  adjustSchema,
+  correctSaleSchema,
+  saleSchema,
+  stockInSchema,
+} from "./schemas";
 
 function revalidateStorage() {
   revalidatePath("/storage");
@@ -106,6 +111,53 @@ export async function receiveStock(
 
   revalidateStorage();
   return { success: me.storage.received };
+}
+
+/**
+ * S-13 [Poravnaj stanje] (D-103, BR-145, P-45): the owner, the admin and the manager;
+ * adjust_stock refuses anyone else. When a sale or a stock-in changed the stock while it
+ * was counted, the page is refreshed so the dialog shows the stock level now.
+ */
+export async function adjustStock(
+  _state: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireStaff();
+  const parsed = adjustSchema.safeParse({
+    productId: formData.get("productId"),
+    counted: formData.get("counted") ?? "",
+    expected: formData.get("expected"),
+    reason: formData.get("reason") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success)
+    return { fieldErrors: fieldErrorsOf(parsed.error.issues) };
+  const value = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("adjust_stock", {
+    p_product: value.productId,
+    p_counted: value.counted,
+    p_expected: value.expected,
+    p_reason: value.reason,
+    p_note: value.note || null,
+  });
+  if (error) {
+    if (rpcCode(error) === "E_STOCK_CHANGED") {
+      revalidateStorage();
+      return {
+        fieldErrors: {
+          counted: getErrorMessage("E_STOCK_CHANGED", {
+            qty: error.details ?? "0",
+          }),
+        },
+      };
+    }
+    return rpcFailure(error);
+  }
+
+  revalidateStorage();
+  return { success: me.storage.adjusted };
 }
 
 /** S-12 [Ispravi] on a bar sale: the method only (BR-094). */

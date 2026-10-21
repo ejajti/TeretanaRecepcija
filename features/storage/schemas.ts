@@ -2,6 +2,7 @@ import { z } from "zod";
 import { checkbox, isoDate } from "@/features/finance/schemas";
 import { parseMoneyInput } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
+import { ADJUST_REASONS, reasonsFor } from "./adjust";
 
 // Doc 08 §6: the S-13 forms, mirroring stock_sale and stock_in (migration 0016).
 
@@ -67,6 +68,47 @@ export const stockInSchema = z
     message: me.errors.E_VALIDATION,
     path: ["method"],
   });
+
+/**
+ * D-103 (BR-145): S-13 [Poravnaj stanje]. What was counted (0–10,000; an empty field is
+ * not a count of zero), the stock level the dialog showed, a reason that fits the
+ * direction, and a note that Ostalo requires.
+ */
+export const adjustSchema = z
+  .object({
+    productId: z.string().uuid(),
+    counted: z.preprocess(
+      (value) =>
+        typeof value === "string" && value.trim() === "" ? undefined : value,
+      z.coerce
+        .number({ message: me.storage.adjustCountedInvalid })
+        .int(me.storage.adjustCountedInvalid)
+        .min(0, me.storage.adjustCountedInvalid)
+        .max(10000, me.storage.adjustCountedInvalid),
+    ),
+    expected: z.coerce.number().int(),
+    reason: z.enum(ADJUST_REASONS, { message: me.storage.adjustReasonInvalid }),
+    // Counted in characters as Postgres counts them (char_length), not UTF-16 units.
+    note: z
+      .string()
+      .trim()
+      .refine((value) => [...value].length <= 200, {
+        message: me.storage.adjustNoteInvalid,
+      }),
+  })
+  .refine((value) => value.counted !== value.expected, {
+    message: me.storage.adjustSame,
+    path: ["counted"],
+  })
+  .refine((value) => value.reason !== "other" || [...value.note].length >= 3, {
+    message: me.storage.adjustNoteRequired,
+    path: ["note"],
+  })
+  .refine(
+    (value) =>
+      reasonsFor(value.counted - value.expected).includes(value.reason),
+    { message: me.storage.adjustReasonInvalid, path: ["reason"] },
+  );
 
 export const correctSaleSchema = z.object({
   movementId: z.string().uuid(),

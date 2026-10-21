@@ -22,6 +22,7 @@ import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
 import { cn } from "@/lib/utils";
 import { voidSale } from "@/features/storage/actions";
+import { adjustReasonLabel, signedQuantity } from "@/features/storage/adjust";
 import { RankedBars } from "./ranked-bars";
 
 /** D-92: what came in, what was sold and what it cost, and the stock at the end. */
@@ -35,6 +36,10 @@ type StorageFigures = {
   profit: string;
   /** Gross profit over revenue, one decimal; null when nothing was sold. */
   margin_pct: string | null;
+  /** D-103: the period's adjustments, signed (−5 short, +2 found). */
+  adjust_quantity: number;
+  /** D-103: Manjak robe, what the goods short cost less the goods found. */
+  shrinkage: string;
   stock: number;
   stock_value: string;
 };
@@ -72,10 +77,33 @@ export type StockInRow = {
   void_reason: string | null;
 };
 
+/** D-103 (BR-145): one stock adjustment of the period. */
+export type AdjustmentRow = {
+  id: string;
+  created_at: string;
+  name: string;
+  before_qty: number;
+  counted_qty: number;
+  /** The difference, signed. */
+  quantity: number;
+  adjust_reason: string;
+  note: string | null;
+  unit_cost: string;
+  /** What the difference cost: positive when goods were short. */
+  shrinkage: string;
+  created_by_name: string;
+  voided_at: string | null;
+  void_reason: string | null;
+};
+
+/** What the void dialog names: a stock-in or an adjustment, and why to think twice. */
+type VoidTarget = { id: string; description: string; warning?: string };
+
 /**
  * S-20 (F-15 for the owner): per product what came in, what was sold, what the sold
- * goods cost and earned (BR-153), and the stock and its value at the end of the period
- * (BR-159), with a totals row; then the daily sales and the stock-ins.
+ * goods cost and earned (BR-153), what the stock counts corrected (D-103), and the stock
+ * and its value at the end of the period (BR-159), with a totals row; then the daily
+ * sales, the stock-ins and the adjustments.
  */
 export function StorageReport({
   products,
@@ -83,6 +111,8 @@ export function StorageReport({
   stockDate,
   daily,
   stockIns,
+  adjustments,
+  recounted,
 }: {
   products: StorageProductRow[];
   totals: StorageTotals | null;
@@ -90,8 +120,11 @@ export function StorageReport({
   stockDate: string | null;
   daily: DailyRow[];
   stockIns: StockInRow[];
+  adjustments: AdjustmentRow[];
+  /** D-103: adjustments whose product was counted again after them. */
+  recounted: string[];
 }) {
-  const [voiding, setVoiding] = useState<StockInRow | null>(null);
+  const [voiding, setVoiding] = useState<VoidTarget | null>(null);
 
   return (
     <div className="grid grid-cols-1 gap-8">
@@ -123,6 +156,8 @@ export function StorageReport({
                 <Th className="text-right">{me.finance.soldCost}</Th>
                 <Th className="text-right">{me.finance.grossMargin}</Th>
                 <Th className="text-right">{me.finance.marginPct}</Th>
+                <Th className="text-right">{me.finance.adjustQuantity}</Th>
+                <Th className="text-right">{me.finance.shrinkage}</Th>
                 <Th className="text-right">{me.finance.stock}</Th>
                 <Th className="text-right">{me.finance.stockValue}</Th>
               </tr>
@@ -245,7 +280,104 @@ export function StorageReport({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setVoiding(row)}
+                          onClick={() =>
+                            setVoiding({
+                              id: row.id,
+                              description: `${row.name} · ${row.quantity} × ${formatMoney(row.unit_cost)}`,
+                            })
+                          }
+                        >
+                          {me.finance.voidStockIn}
+                        </Button>
+                      )}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrapper>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">{me.finance.adjustments}</h2>
+        {adjustments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {me.finance.adjustmentsEmpty}
+          </p>
+        ) : (
+          <TableWrapper>
+            <Table aria-label={me.finance.adjustments}>
+              <thead>
+                <tr>
+                  <Th>{me.finance.date}</Th>
+                  <Th>{me.finance.product}</Th>
+                  <Th className="text-right">{me.finance.adjustBefore}</Th>
+                  <Th className="text-right">{me.finance.adjustCounted}</Th>
+                  <Th className="text-right">{me.finance.adjustDifference}</Th>
+                  <Th>{me.finance.adjustReason}</Th>
+                  <Th className="text-right">{me.finance.shrinkage}</Th>
+                  <Th>{me.finance.enteredBy}</Th>
+                  <Th>
+                    <span className="sr-only">{me.users.actions}</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {adjustments.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      // BR-095: a voided adjustment stays listed, struck through.
+                      row.voided_at && "text-muted-foreground line-through",
+                    )}
+                  >
+                    <Td className="whitespace-nowrap">
+                      {formatDateTime(row.created_at)}
+                    </Td>
+                    <Td>
+                      {row.name}
+                      {row.voided_at ? (
+                        <span className="inline-block w-full text-xs text-danger">
+                          {me.report.voided}: {row.void_reason}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {row.before_qty}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {row.counted_qty}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {signedQuantity(row.quantity)}
+                    </Td>
+                    <Td>
+                      {adjustReasonLabel(row.adjust_reason, row.quantity)}
+                      {row.note ? (
+                        <span className="inline-block w-full text-xs text-muted-foreground">
+                          {row.note}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {formatMoney(row.shrinkage)}
+                    </Td>
+                    <Td>{row.created_by_name}</Td>
+                    <Td className="text-right">
+                      {row.voided_at ? null : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setVoiding({
+                              id: row.id,
+                              description: `${me.storage.adjustTitle}: ${row.name} ${signedQuantity(row.quantity)}`,
+                              warning: recounted.includes(row.id)
+                                ? me.finance.adjustRecounted
+                                : undefined,
+                            })
+                          }
                         >
                           {me.finance.voidStockIn}
                         </Button>
@@ -261,7 +393,7 @@ export function StorageReport({
 
       {/* N-12: mounted only while open, so each opening starts without old messages. */}
       {voiding ? (
-        <VoidStockIn movement={voiding} onDone={() => setVoiding(null)} />
+        <VoidMovement target={voiding} onDone={() => setVoiding(null)} />
       ) : null}
     </div>
   );
@@ -280,6 +412,10 @@ function Figures({ row }: { row: StorageFigures }) {
         {formatMoney(row.profit)}
       </Td>
       <Td className="text-right tabular-nums">{margin(row.margin_pct)}</Td>
+      <Td className="text-right tabular-nums">
+        {signedQuantity(row.adjust_quantity)}
+      </Td>
+      <Td className="text-right tabular-nums">{formatMoney(row.shrinkage)}</Td>
       <Td className="text-right tabular-nums">{row.stock}</Td>
       <Td className="text-right tabular-nums">
         {formatMoney(row.stock_value)}
@@ -288,30 +424,34 @@ function Figures({ row }: { row: StorageFigures }) {
   );
 }
 
-/** BR-135 and BR-143: voiding a stock-in voids its expense with it. */
-function VoidStockIn({
-  movement,
+/**
+ * BR-095: the owner voids a stock-in, which voids its expense with it (BR-135, BR-143),
+ * or (D-103) an adjustment, which puts the stock back where it was.
+ */
+function VoidMovement({
+  target,
   onDone,
 }: {
-  movement: StockInRow | null;
+  target: VoidTarget;
   onDone: () => void;
 }) {
   const [state, onSubmit, pending] = useFormAction(voidSale);
   useActionToast(state, onDone);
 
   return (
-    <Dialog open={Boolean(movement)} onOpenChange={(open) => !open && onDone()}>
+    <Dialog open onOpenChange={(open) => !open && onDone()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{me.finance.voidStockIn}</DialogTitle>
-          <DialogDescription>
-            {movement
-              ? `${movement.name} · ${movement.quantity} × ${formatMoney(movement.unit_cost)}`
-              : ""}
-          </DialogDescription>
+          <DialogDescription>{target.description}</DialogDescription>
         </DialogHeader>
+        {target.warning ? (
+          <p role="alert" className="rounded-lg border p-3 text-sm">
+            {target.warning}
+          </p>
+        ) : null}
         <form onSubmit={onSubmit} className="grid gap-4" noValidate>
-          <input type="hidden" name="id" value={movement?.id ?? ""} />
+          <input type="hidden" name="id" value={target.id} />
           <FormError>{state.error}</FormError>
           <div className="grid gap-1.5">
             <Label htmlFor="stockin-reason">{me.payments.reason}</Label>
