@@ -166,7 +166,7 @@ An `admin` sees everything an owner sees (D-58).
 
 ## S-11 Desk expense dialog
 - **D-98:** the dialog of S-17 [Novi trošak] (BR-133), titled `Novi trošak` with `Troškovi` underneath, for every role.
-- **Fields:** `Kategorija` (active, not "Roba za prodaju", D-92; salary categories only for the owner and the admin, D-37), `Trener` (salary category only), `Opis`, `Iznos (€)`, `Datum`, `Način` (Gotovina, Platna kartica, Van kase), `PDV uračunat`, `Dobavljač`, `Račun` and `Iz kase` with its hint. `Iz kase` is ticked when the dialog opens while a shift is open.
+- **Fields:** `Kategorija` (active, not "Roba za prodaju", D-92; salary categories only for the owner and the admin, D-37), `Trener` (salary category only), `Opis`, `Iznos (€)`, `Datum plaćanja`, `Trošak za mjesec` (D-104: the month of the date first, then the 12 before it; hint `Mjesec u čijem se bilansu uspjeha trošak računa. U novčanom toku ostaje na datum plaćanja.`), `Način` (Gotovina, Platna kartica, Van kase), `PDV uračunat`, `Dobavljač`, `Račun` and `Iz kase` with its hint. `Iz kase` is ticked when the dialog opens while a shift is open. The dialog scrolls when it is taller than the screen.
 - **Buttons:** [Sačuvaj] and [Otkaži].
 
 ## S-12 Today's payments — `/payments/today`
@@ -231,7 +231,7 @@ An `admin` sees everything an owner sees (D-58).
 ## S-17 Expenses — `/finance/expenses` (owner)
 - **Controls:** filters and [Novi trošak] (the BR-133 form, which does not offer "Roba za prodaju", D-92; the category filter still does).
 - **Total (D-63):** `Ukupno: <iznos>` above the table, for the listed expenses without the voided ones; when voided rows are listed, the note `Poništeni troškovi nisu uračunati.`
-- **Table:** Datum, Kategorija, Opis, Dobavljač, Račun, Način, Iz kase, Iznos, Unio/la, and actions. A row posted from a fixed expense carries the badge `Fiksni` beside its Opis (BR-136, D-93).
+- **Table:** Datum, Kategorija, Opis, Dobavljač, Račun, Način, Iz kase, Iznos, Unio/la, and actions. A row posted from a fixed expense carries the badge `Fiksni` beside its Opis (BR-136, D-93). The list and its filter go by the day paid; an expense for another month shows `Za mjesec: <mjesec godina>` under its date (D-104).
 - **Button:** [Kategorije troškova] opens a dialog listing categories with inline rename, active toggle and [Dodaj].
 - **Manager (D-80):** read-only, with the D-80 periods. Salary-category expenses are not listed and not offered in the category filter. There is no [Novi trošak], [Kategorije troškova] or [Poništi].
 

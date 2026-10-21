@@ -2684,6 +2684,24 @@ Legenda: svaki test ima polje za rezultat. Popunjavajte ga dok radite.
   izostavljene iz zbira, liste i kategorija, `fin_shifts` bez putanje izvještaja i statusa emaila,
   vlasnik nepromijenjen).
 
+### [FIN-19] Trošak za mjesec — račun za prošli mjesec plaćen danas (E27, D-104)
+- **Prioritet:** Kritično
+- **Uloga / preduslovi:** vlasnik; kategorija `Struja`
+- **Koraci:** 1) `/finance/expenses` → [Novi trošak]. Pogledajte polja „Datum plaćanja“ i „Trošak za mjesec“. 2) Kategorija `Struja`, Opis `Struja za prošli mjesec`, Iznos `120`, Način `Platna kartica`, Trošak za mjesec: prošli mjesec → [Sačuvaj]. 3) `/finance?period=last_month`. 4) `/finance?period=month`.
+- **Test podaci:** kao gore
+- **Očekivani rezultat:** 1) „Datum plaćanja“ je današnji; „Trošak za mjesec“ nudi 13 mjeseci, tekući prvi i izabran, zatim 12 prije njega. 2) „Trošak je sačuvan.“; u listi red sa današnjim datumom i ispod njega „Za mjesec: <prošli mjesec godina>“. 3) Bilans uspjeha: red `Struja` 120,00 €, Profit -120,00 €; Novčani tok: Ostala plaćanja 0,00 €. 4) Bilans: „Nema operativnih troškova.“; Novčani tok: Ostala plaćanja 120,00 €.
+- **Gdje provjeriti:** UI; Finansije → Dnevnik izmjena („Trošak za mjesec: <mjesec godina>“)
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** `expense-cost-month.spec.ts` „E27“ (desktop i mobilni, produkcijska baza, svoja E2E teretana): koraci 1–4 kako je opisano, red u bazi `spent_on` danas, `cost_month` prvi u prošlom mjesecu. Dnevnik izmjena: pgTAP `0035` (novi red nosi `cost_month`) i unit `audit-format.test.ts`.
+
+### [FIN-20] Trošak za mjesec — recepcija, plata trenera, granice (D-104)
+- **Prioritet:** Visoko
+- **Uloga / preduslovi:** recepcioner sa otvorenom smjenom; vlasnik; trener Tamara
+- **Koraci:** 1) Recepcioner: [Trošak] (Iz kase označeno) → Trošak za mjesec: prošli mjesec → sačuvajte. 2) Vlasnik: [Novi trošak] kategorija `Plate`, trener Tamara, Trošak za mjesec: prošli mjesec. Pogledajte S-18 za prošli i za ovaj mjesec. 3) Vlasnik: Datum plaćanja u prošlom mjesecu — pogledajte ponuđene mjesece.
+- **Test podaci:** —
+- **Očekivani rezultat:** 1) trošak je iz kase, danas, u otvorenoj smjeni; računa se za prošli mjesec. 2) Isplaćeno kod Tamare je u prošlom mjesecu, ne u ovom. 3) ponuda počinje mjesecem plaćanja; tekući mjesec se ne nudi. Mjesec više od 12 unazad, ili poslije mjeseca plaćanja, baza odbija.
+- **Gdje provjeriti:** UI
+- [x] Prošlo  [ ] Palo  Napomena: **21.10.2026 — PROŠLO.** Korak 1: `expense-cost-month.spec.ts` „the desk pays last month's bill from the till“ (desktop i mobilni). Koraci 2 i 3: pgTAP `0035` (Isplaćeno 200,00 u prošlom mjesecu, 0 u ovom; mjesec poslije mjeseca plaćanja, 13 unazad i ne-prvi u mjesecu odbijeni; prozor prati datum plaćanja) i unit `schema-bounds.test.ts`. Koraci 2 i 3 nisu prođeni kroz UI.
+
 ---
 
 ### 3.13 STAT — statistika dolazaka (S-15)
@@ -4428,6 +4446,33 @@ upoređeni su izvještaji prije i poslije.
 | E2E na produkcijskoj bazi, desktop i mobilni, svoja E2E teretana koju briše: `stock-adjustment` (4 × 2) | **8 prošlo** |
 | E2E `storage` (desktop) poslije dvije nove kolone na S-20 | **5 prošlo** (E23 i `test-plan-medium-b` E2E-08 dopunjeni sa „0“ i „0,00 €“ prije kolone Stanje) |
 | Cijeli E2E (`npm run test:e2e`) | **nije završen:** prekinut 21.10.2026 na zahtjev, jer slijede nove izmjene; pokreće se poslije njih. Do prekida 115 testova prošlo, jedan pao (E23, popravljen gore). Test teretana iz prekinutog testa obrisana; u bazi je samo KP Fitness |
+
+### 9.26 Dopuna — trošak za mjesec (D-104), 21.10.2026
+
+**D-104 (zahtjev 21.10.2026):** trošak pamti dan plaćanja (`Datum plaćanja`) i može da navede
+mjesec za koji je (`Trošak za mjesec`): mjesec plaćanja (podrazumijevano) ili jedan od 12 prije
+njega, za svaku ulogu, i na recepciji. Račun za struju za septembar plaćen 8. oktobra je trošak
+septembra u Bilansu uspjeha, karticama Troškovi i Profit, na grafikonu i u Isplaćeno na S-18, a
+plaćanje oktobra u Novčanom toku. Lista troškova (S-17), smjena, troškovi po kategorijama i
+menadžerove finansije idu po danu plaćanja. Nova roba nema mjesec. Pogrešan mjesec se poništi pa
+unese ponovo. Neplaćeni računi nisu dio ove izmjene. Migracija 0055: kolona `expenses.cost_month`
+(prazna = dan plaćanja), provjera i indeks, `record_expense` sa `p_cost_month` na kraju, nove
+verzije `fin_statement`, `fin_summary`, `fin_chart`, `fin_trainer_stats` i `fin_expenses`.
+
+Novi slučajevi: FIN-19 i FIN-20. Primjer E27 u doc 03.
+
+**Teretana radi:** postojeći podaci nisu mijenjani ni brisani; 73 postojeća troška ostaju bez
+mjeseca i čitaju se kao ranije.
+
+| Provjera 21.10.2026 | Rezultat |
+|---|---|
+| 0055 nad živim podacima u transakciji koja se poništava: `fin_statement`, `fin_summary`, `fin_expenses` i `fin_income_breakdown` (danas, ova sedmica, ovaj i prošli mjesec, septembar, ova godina, od 2020), `fin_chart` (godina, mjesec, septembar), `fin_trainer_stats` (ovaj i prošli mjesec) | **sve isto**; nijedan trošak nema mjesec; prava na `record_expense` ista kao prije. (U prvom pokušaju `fin_income_breakdown` za sedmicu je vratio dva plana sa istim iznosom drugim redom; ta funkcija se ne mijenja, a ponovljena provjera je bila ista) |
+| pgTAP sa 0055 u transakciji koja se poništava | novo `0035_expense_cost_month` (37 provjera) i `0008`, `0010`, `0012`, `0019`, `0024`, `0025`, `0028`, `0030`, `0034` — sve prošlo |
+| Migracija 0055 na produkciji | primijenjena; `npm run test:db` **36/36** |
+| `npm run lint`, `npm run typecheck`, unit (`tests/unit`) | PROŠLO (234) |
+| E2E `expense-cost-month` (desktop i mobilni) | **4 prošlo** poslije popravke: na 375 px je dugme [Sačuvaj] bilo ispod ekrana jer je forma viša; dijalog troška se sada pomjera (kao Nova roba) |
+| Cijeli E2E (`npm run test:e2e`), dev server, oba projekta, sa D-103 i D-104 (21.10.2026) | **366 prošlo, 2 pala**, 2 nisu pokrenuta (serijski nastavci palih), 164 preskočeno. Svi testovi magacina, poravnanja, troškova i finansija prošli su na desktopu i mobilnom. Pali: **UX-04**, jer je jedina neimenovana stavka u redoslijedu tabulatora `nextjs-portal` (dugme Next.js dev alata, samo na dev serveru, vidi 9.12), i **UX-02**, koji zavisi od vremena. Nepokrenuti: §5.2 / N-24 (posebno pušten: prošao) i MEM-18 (PDF) (pušten sa UX-02: prošao) |
+| UX-02 posebno | Prolazi samo kad klik na meni stigne prije hidracije: tada server pošalje cijelu stranicu sa skeletonom. Kad se sačeka da React bude spreman (`networkidle`), skeleton se pri navigaciji kroz meni ne pojavi i test pada 3/3 **i na stanju prije D-103 (`ffdc790`)**, pa ga ove izmjene nisu pokvarile. Na `ffdc790` bez čekanja 7/7, na novom kodu 15/18 (sa trace-om 13/13). Test je ostao nepromijenjen. Zapažanje za kasnije: sa `prefetch={false}` (D-86) navigacija kroz meni na sporoj mreži ne prikazuje skeleton |
 
 *Kraj plana. Novi rezultati upisani su uz slučajeve; neoznačeni kvadratići nisu automatski prolaz.*
 

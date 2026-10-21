@@ -1,5 +1,6 @@
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
+import { formatMonth } from "./cost-month";
 
 export type AuditRow = {
   id: number;
@@ -141,6 +142,8 @@ export function auditValue(
     return (table === "plans" ? PLAN_KINDS : PAYMENT_KINDS)[text] ?? text;
   if (ENUMS[column]) return ENUMS[column][text] ?? text;
   if (column === "logo_path") return me.audit.values.logoSet;
+  // D-104: the month an expense is for, by its name.
+  if (column === "cost_month" && DATE.test(text)) return formatMonth(text);
   if (column === "auto_close_time" || column === "class_time")
     return text.slice(0, 5);
   try {

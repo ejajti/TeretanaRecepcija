@@ -70,7 +70,8 @@ Use these terms **exactly** in the documents, code and UI.
 | Day pass | plan kind `day_pass` | Dnevna karta | Single-day entry sold by quantity, without a name or check-in. Default €15 (D-70). |
 | Sale (bar) | `stock_movement.type = 'out'` | Prodaja | A product sold at the desk. It is income. |
 | Income | computed | Prihod | Non-voided payments plus non-voided sales. |
-| Expense | `expense` | Trošak | Money spent. |
+| Expense | `expense` | Trošak | Money spent. `spent_on` is the day it was paid (`Datum plaćanja`). |
+| Month an expense is for | `expenses.cost_month` | Trošak za mjesec | The month whose income statement carries an expense: the month it was paid, or one of the 12 before it (BR-133, D-104). Empty means the day it was paid. |
 | Expense category | `expense_category` | Kategorija troška | Owner-managed list. |
 | Salary category | `is_salary = true` | — | Category "Plate". Only the owner can use it. |
 | System category | `is_system = true` | — | Category "Roba za prodaju". Used automatically by stock-in; cannot be deactivated or chosen for a hand-entered expense (D-92). |

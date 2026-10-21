@@ -985,6 +985,14 @@ export const me = {
     saved: "Naknadni unos je sačuvan.",
     // Validation.
     dateInvalid: "Unesite datum koji nije u budućnosti.",
+    // D-104 (BR-133): the day an expense was paid and the month it is for.
+    expensePaidOn: "Datum plaćanja",
+    costMonth: "Trošak za mjesec",
+    costMonthHint:
+      "Mjesec u čijem se bilansu uspjeha trošak računa. U novčanom toku ostaje na datum plaćanja.",
+    costMonthInvalid:
+      "Izaberite mjesec plaćanja ili jedan od 12 mjeseci prije njega.",
+    costMonthFor: "Za mjesec: {month}",
     timeInvalid: "Vrijeme izlaska mora biti poslije vremena ulaska.",
     amountInvalid: "Unesite iznos između 0,01 i 100.000,00 €.",
     descriptionInvalid: "Unesite opis (2–200 znakova).",
@@ -1048,12 +1056,15 @@ export const me = {
       personal_session_limit: "Personalnih termina",
       kind: "Vrsta",
       paid_on: "Datum uplate",
-      spent_on: "Datum troška",
+      // D-104: the day an expense was paid, beside the month it is for.
+      spent_on: "Datum plaćanja",
       starts_on: "Od mjeseca",
       supplier: "Dobavljač",
       invoice_number: "Račun",
       vat_included: "PDV uračunat",
       type: "Promet",
+      // D-104: the month an expense is for.
+      cost_month: "Trošak za mjesec",
       // D-103: an adjustment's count and reason.
       counted_qty: "Prebrojano stanje",
       adjust_reason: "Razlog poravnanja",

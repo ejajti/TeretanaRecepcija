@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
+import {
+  costMonthOptions,
+  formatMonth,
+  monthOf,
+} from "@/features/finance/cost-month";
 import { expenseSchema, resendShiftSchema } from "@/features/finance/schemas";
+import { me } from "@/lib/i18n/me";
 import {
   gymSettingsSchema,
   planSchema,
@@ -166,5 +172,41 @@ describe("N-17: whole-number gym settings answer in Montenegrin (SET-18)", () =>
       expect(
         gymSettingsSchema.safeParse({ ...settings, [field]: value }).success,
       ).toBe(true);
+  });
+});
+
+describe("D-104: the month an expense is for", () => {
+  it("offers the month paid and the twelve before it, across a new year", () => {
+    const months = costMonthOptions("2026-03-15");
+    expect(months).toHaveLength(13);
+    expect(months[0]).toBe("2026-03-01");
+    expect(months[1]).toBe("2026-02-01");
+    expect(months[2]).toBe("2026-01-01");
+    expect(months[3]).toBe("2025-12-01");
+    expect(months[12]).toBe("2025-03-01");
+    expect(monthOf("2026-10-08")).toBe("2026-10-01");
+    expect(formatMonth("2026-09-01")).toBe("septembar 2026");
+  });
+  it("reads an empty or missing month as the month paid", () => {
+    expect(expenseSchema.parse(expense).costMonth).toBeNull();
+    expect(
+      expenseSchema.parse({ ...expense, costMonth: "" }).costMonth,
+    ).toBeNull();
+  });
+  it("accepts a month in the window and refuses one outside it", () => {
+    // E27: the bill for February paid in March.
+    expect(
+      expenseSchema.parse({ ...expense, costMonth: "2026-02-01" }).costMonth,
+    ).toBe("2026-02-01");
+    expect(
+      expenseSchema.safeParse({ ...expense, costMonth: "2025-03-01" }).success,
+    ).toBe(true);
+    for (const costMonth of ["2025-02-01", "2026-04-01", "2026-02-15"]) {
+      const result = expenseSchema.safeParse({ ...expense, costMonth });
+      expect(result.error?.issues[0]?.path[0]).toBe("costMonth");
+      expect(result.error?.issues[0]?.message).toBe(
+        me.finance.costMonthInvalid,
+      );
+    }
   });
 });

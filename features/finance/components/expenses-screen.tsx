@@ -27,6 +27,7 @@ import { formatDate, formatMoney, sumMoney } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
 import { cn } from "@/lib/utils";
 import { saveExpense, voidExpense } from "../actions";
+import { formatMonth } from "../cost-month";
 import type { Period } from "../period";
 import {
   ExpenseDialog,
@@ -37,6 +38,8 @@ import {
 export type ExpenseRow = {
   id: string;
   spent_on: string;
+  /** D-104: the month the expense is for, when it is not the month paid. */
+  cost_month: string | null;
   category_name: string;
   is_salary: boolean;
   description: string;
@@ -181,6 +184,14 @@ export function ExpensesScreen({
                 >
                   <Td className="whitespace-nowrap">
                     {formatDate(row.spent_on)}
+                    {row.cost_month ? (
+                      <span className="block text-xs text-muted-foreground">
+                        {me.finance.costMonthFor.replace(
+                          "{month}",
+                          formatMonth(row.cost_month),
+                        )}
+                      </span>
+                    ) : null}
                   </Td>
                   <Td>
                     {row.category_name}

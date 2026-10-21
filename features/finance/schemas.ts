@@ -2,6 +2,7 @@ import { z } from "zod";
 import { classTimeValue } from "@/features/memberships/schemas";
 import { parseMoneyInput } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
+import { costMonthOptions } from "./cost-month";
 
 // Doc 08 §6: the S-17 and S-22 forms, mirroring the checks of migrations 0020 and 0022.
 
@@ -69,13 +70,30 @@ export const expenseSchema = z
     invoice: z.string().trim().max(50, me.finance.invoiceInvalid),
     vat: z.enum(["yes", "no", "unset"]),
     trainerId: optionalUuid,
+    // D-104: the month the expense is for; empty means the month it was paid.
+    costMonth: z.preprocess(
+      (value) =>
+        value === undefined ||
+        (typeof value === "string" && value.trim() === "")
+          ? null
+          : value,
+      isoDate.nullable(),
+    ),
   })
   // BR-133: money out of the till is cash, today, and needs an open shift; the RPC
   // enforces all three again, but the form should not offer a contradiction first.
   .refine((value) => !value.fromTill || value.method === "cash", {
     message: me.errors.E_VALIDATION,
     path: ["method"],
-  });
+  })
+  // D-104: the month paid or one of the 12 before it; the RPC checks it again against
+  // the day it records, which is today from the till.
+  .refine(
+    (value) =>
+      value.costMonth === null ||
+      costMonthOptions(value.spentOn).includes(value.costMonth),
+    { message: me.finance.costMonthInvalid, path: ["costMonth"] },
+  );
 
 /**
  * BR-136 (D-93): a fixed expense. The first month arrives from `<input type="month">`

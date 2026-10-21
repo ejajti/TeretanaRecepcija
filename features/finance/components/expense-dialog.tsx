@@ -21,6 +21,7 @@ import { Select } from "@/components/ui/select";
 import type { Category } from "@/features/settings/components/categories-section";
 import type { ActionState } from "@/lib/action-state";
 import { me } from "@/lib/i18n/me";
+import { costMonthOptions, formatMonth, monthOf } from "../cost-month";
 
 export type Trainer = { id: string; full_name: string };
 
@@ -57,7 +58,8 @@ export function ExpenseDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      {/* D-104: with the month it is for, the form is taller than a phone (D-45). */}
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{me.finance.newExpense}</DialogTitle>
           <DialogDescription>{me.finance.expensesTitle}</DialogDescription>
@@ -84,6 +86,22 @@ function ExpenseForm({
   const [categoryId, setCategoryId] = useState(prefill?.categoryId ?? "");
   const [fromTill, setFromTill] = useState(defaultFromTill);
   const [method, setMethod] = useState("cash");
+  const [paidOn, setPaidOn] = useState(today);
+  const [costMonth, setCostMonth] = useState(monthOf(today));
+
+  // D-104: the months the expense may be for follow the day it is paid, today from the
+  // till; a month that no longer fits falls back to the month paid.
+  const paid = fromTill || !/^\d{4}-\d{2}-\d{2}$/.test(paidOn) ? today : paidOn;
+  const months = costMonthOptions(paid);
+  const chosenMonth = months.includes(costMonth) ? costMonth : months[0];
+  function changePaidOn(value: string) {
+    setPaidOn(value);
+    if (
+      /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+      !costMonthOptions(value).includes(costMonth)
+    )
+      setCostMonth(monthOf(value));
+  }
 
   // BR-133 (D-92): Roba za prodaju is written only by Nova roba, never by hand.
   const active = categories.filter(
@@ -163,13 +181,14 @@ function ExpenseForm({
           <FieldError id="amount-error">{state.fieldErrors?.amount}</FieldError>
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="expense-date">{me.finance.date}</Label>
+          <Label htmlFor="expense-date">{me.finance.expensePaidOn}</Label>
           <Input
             id="expense-date"
             name="spentOn"
             type="date"
             max={today}
-            defaultValue={today}
+            value={fromTill ? today : paidOn}
+            onChange={(event) => changePaidOn(event.target.value)}
             disabled={fromTill}
             required
           />
@@ -181,6 +200,32 @@ function ExpenseForm({
             {state.fieldErrors?.spentOn}
           </FieldError>
         </div>
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="expense-cost-month">{me.finance.costMonth}</Label>
+        <Select
+          id="expense-cost-month"
+          name="costMonth"
+          value={chosenMonth}
+          onChange={(event) => setCostMonth(event.target.value)}
+          aria-describedby="expense-cost-month-hint costMonth-error"
+        >
+          {months.map((month) => (
+            <option key={month} value={month}>
+              {formatMonth(month)}
+            </option>
+          ))}
+        </Select>
+        <p
+          id="expense-cost-month-hint"
+          className="text-xs text-muted-foreground"
+        >
+          {me.finance.costMonthHint}
+        </p>
+        <FieldError id="costMonth-error">
+          {state.fieldErrors?.costMonth}
+        </FieldError>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

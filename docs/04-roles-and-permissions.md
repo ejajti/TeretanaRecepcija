@@ -39,7 +39,7 @@
 | P-29 | View today's payments and sales (not back-dated) | ✓ (all dates) | ✓ | ✓ | |
 | P-30 | Correct method or note; void with reason | ✓ (any record) | open shift | open shift | BR-094, BR-095 |
 | P-31 | Correct an amount | ✓ | ✗ | ✗ | BR-094 |
-| P-32 | Enter an expense at the desk on the BR-133 form: any day up to today, any method, from the till or not; non-salary category; open shift | ✓ (salary too, no shift needed outside the till) | ✓ | ✓ | BR-132, D-98 |
+| P-32 | Enter an expense at the desk on the BR-133 form: any day up to today, the month it is for (D-104), any method, from the till or not; non-salary category; open shift | ✓ (salary too, no shift needed outside the till) | ✓ | ✓ | BR-132, D-98 |
 | P-33 | View expenses | all | every non-salary expense, read-only: of today on S-12 (D-96), of Danas, Ova sedmica or Ovaj mjesec on S-17 (D-80) | own, today | BR-134, D-80, D-96 |
 | P-34 | Void an expense | ✓ (any) | own, open shift | own, open shift | BR-135 |
 | **Magacin** | | | | | |

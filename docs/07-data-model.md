@@ -401,6 +401,7 @@ create table expenses (
   trainer_id        uuid references trainers(id),      -- payout (salary category only)
   stock_movement_id uuid unique references stock_movements(id),
   recurring_expense_id uuid references recurring_expenses(id),  -- D-93: posted from
+  cost_month        date,                              -- D-104: the month it is for; null = spent_on
   created_by        uuid not null references staff(id),
   shift_id          uuid references shifts(id),
   created_at        timestamptz not null default now(),
@@ -409,9 +410,14 @@ create table expenses (
   void_reason       text,
   check (not paid_from_till or (method = 'cash' and shift_id is not null)),
   check ((voided_at is null) = (void_reason is null)),
-  check (recurring_expense_id is null or not paid_from_till)
+  check (recurring_expense_id is null or not paid_from_till),
+  check (cost_month is null                             -- D-104 (migration 0055)
+         or (extract(day from cost_month) = 1 and stock_movement_id is null
+             and cost_month < date_trunc('month', spent_on::timestamp)::date
+             and cost_month >= (date_trunc('month', spent_on::timestamp) - interval '12 months')::date))
 );
 create index expenses_spent_idx on expenses (gym_id, spent_on);
+create index expenses_cost_date_idx on expenses (gym_id, (coalesce(cost_month, spent_on)));  -- D-104
 -- BR-136: a fixed expense is posted at most once a month, voided postings included.
 create unique index expenses_recurring_month_idx on expenses (recurring_expense_id, spent_on)
   where recurring_expense_id is not null;
@@ -545,7 +551,7 @@ All RPCs are `security definer`. Each one:
 | `correct_payment(p_payment, p_method, p_note, p_amount default null)` | all (amount: owner) | BR-094 |
 | `void_payment(p_payment, p_reason)` | all per BR-094 | BR-095 |
 | `record_desk_expense(p_category, p_description, p_amount)` | all | BR-132 before D-98, unused by the app since; "Roba za prodaju" raises `E_CATEGORY_NOT_ALLOWED` (D-92) |
-| `record_expense(…BR-133 fields)` | all (D-98): a salary category only for the owner and the admin; anyone else needs an open shift, which the expense joins | BR-132, BR-133; "Roba za prodaju", and a salary for anyone but the owner, raise `E_CATEGORY_NOT_ALLOWED` (D-92, D-37) |
+| `record_expense(…BR-133 fields, p_cost_month date default null)` | all (D-98): a salary category only for the owner and the admin; anyone else needs an open shift, which the expense joins | BR-132, BR-133; "Roba za prodaju", and a salary for anyone but the owner, raise `E_CATEGORY_NOT_ALLOWED` (D-92, D-37); `p_cost_month` (D-104, migration 0055) is the 1st of the month of the recorded date or of one of the 12 months before it, else `E_VALIDATION`; the month of the date is stored as null |
 | `upsert_recurring_expense(p_id, p_category, p_description, p_amount, p_method, p_starts_on, p_is_active)` → recurring_expenses | owner | BR-136 (D-93); posts the month that has begun at once |
 | `post_recurring_expenses(p_gym, p_today date default null)` → number posted | other functions only | BR-136 |
 | `job_recurring_expenses()` → number posted, for every gym | pg_cron only | BR-136, BR-162 |
@@ -573,12 +579,12 @@ For managers, `shift_summary` must verify that the requested shift is the curren
 
 **Owner-only report functions** (`security definer`; each starts with `if my_role() <> 'owner' then raise`):
 - `fin_summary(p_from, p_to)` — also a manager (D-80), who gets only `income` and `expenses` as paid, salary categories left out. The owner's `expenses` are the cost of goods sold, Manjak robe (D-103) and the operating expenses, and `profit` is BR-152 (D-92);
-- `fin_statement(p_from, p_to)` — the owner's income statement and cash flow (D-92): `income` {`memberships`, `training`, `storage`, `other`, `total`}, `cogs`, `shrinkage` (Manjak robe, BR-145, D-103), `gross_profit`, `operating` [{`name`, `total`}], `operating_total`, `profit`, `cash_flow` {`received`, `goods_paid`, `other_paid`, `net_change`}, `stock_value`, `stock_value_date` (BR-150 to BR-153, BR-158, BR-159). A period that ends before it starts raises `E_VALIDATION`;
+- `fin_statement(p_from, p_to)` — the owner's income statement and cash flow (D-92): `income` {`memberships`, `training`, `storage`, `other`, `total`}, `cogs`, `shrinkage` (Manjak robe, BR-145, D-103), `gross_profit` (operating expenses by `coalesce(cost_month, spent_on)`, the cash flow by `spent_on`, D-104), `operating` [{`name`, `total`}], `operating_total`, `profit`, `cash_flow` {`received`, `goods_paid`, `other_paid`, `net_change`}, `stock_value`, `stock_value_date` (BR-150 to BR-153, BR-158, BR-159). A period that ends before it starts raises `E_VALIDATION`;
 - `fin_income_breakdown(p_from, p_to)` — also a manager (D-80), whose `by_category` leaves out salary categories;
-- `fin_chart(p_year, p_month default null)` — the S-16 chart (D-68): the year's twelve months, or the month's days, each with income and expenses, `null` after today; plus the totals and the first year that holds any money. A slot's expenses are its operating expenses plus the cost of the goods sold in it (D-92) and its Manjak robe (D-103);
-- `fin_expenses(p_from, p_to, filters)` — also a manager (D-80), without salary-category rows; each row names its `recurring_expense_id` (D-93) and who entered it, `created_by` (D-96, S-12);
+- `fin_chart(p_year, p_month default null)` — the S-16 chart (D-68): the year's twelve months, or the month's days, each with income and expenses, `null` after today; plus the totals and the first year that holds any money. A slot's expenses are its operating expenses (an expense for another month on that month's 1st, D-104) plus the cost of the goods sold in it (D-92) and its Manjak robe (D-103);
+- `fin_expenses(p_from, p_to, filters)` — also a manager (D-80), without salary-category rows; by `spent_on`; each row names its `recurring_expense_id` (D-93), who entered it, `created_by` (D-96, S-12), and its `cost_month` (D-104);
 - `fin_recurring_expenses()` — S-30 (D-93): `items` (with `category_name`, `is_salary`, `last_posted` and `has_postings`) and the active ones' `salary_total`, `other_total` and `total` a month;
-- `fin_trainer_stats(p_month date)`;
+- `fin_trainer_stats(p_month date)` — `paid_out` (Isplaćeno) counts each payout in the month it is for (D-104);
 - `fin_trainer_payments(p_trainer, p_month)`;
 - `fin_storage(p_from, p_to)` — per product the prices, the period's stock-ins and sales with their cost, profit and margin, its adjustments (`adjust_quantity`, signed, and `shrinkage`, D-103), and the stock and its value at the end of the period (BR-159), plus `totals`, `stock_date` (D-92), `stock_ins` and `adjustments` (D-103: `before_qty`, `counted_qty`, `quantity`, `adjust_reason`, `note`, `shrinkage`, who entered it and the void);
 - `fin_shifts(p_from, p_to)` — also a manager (D-80), without `report_path`, `email_status`, `email_attempts` and `emailed_at`;

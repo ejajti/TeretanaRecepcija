@@ -25,6 +25,7 @@ export async function submitExpense(
     invoice: formData.get("invoice") ?? "",
     vat: formData.get("vat") ?? "unset",
     trainerId: formData.get("trainerId") ?? "",
+    costMonth: formData.get("costMonth") ?? "",
   });
   if (!parsed.success)
     return { fieldErrors: fieldErrorsOf(parsed.error.issues) };
@@ -47,6 +48,8 @@ export async function submitExpense(
     p_invoice: parsed.data.invoice || null,
     p_vat: parsed.data.vat === "unset" ? null : parsed.data.vat === "yes",
     p_trainer: parsed.data.trainerId,
+    // D-104: the month it is for; the month paid is stored as none.
+    p_cost_month: parsed.data.costMonth,
   });
   return error ? rpcFailure(error) : null;
 }

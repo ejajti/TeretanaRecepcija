@@ -236,6 +236,18 @@ describe("auditChanges (N-21)", () => {
     );
   });
 
+  it("names the month an expense is for (D-104)", () => {
+    const bill = row("expenses", "insert", null, {
+      category_id: "c1",
+      description: "Struja",
+      amount: 120,
+      spent_on: "2026-10-08",
+      cost_month: "2026-09-01",
+    });
+    expect(lines(bill)).toContain("Trošak za mjesec: septembar 2026");
+    expect(lines(bill)).toContain("Datum plaćanja: 08.10.2026");
+  });
+
   it("collects every referenced id once", () => {
     const ids = auditReferences([
       row(

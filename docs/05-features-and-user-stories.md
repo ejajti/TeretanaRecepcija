@@ -195,6 +195,7 @@ Covered by US-04.4, BR-078 and BR-079.
 ## F-18 Owner expenses and categories
 **US-18.1** As the owner, I record any expense (BR-133) and see all expenses with filters for period, category, method and "entered by" (S-17).
 - AC1 (D-63): the screen shows `Ukupno: <iznos>` for the listed expenses, voided ones excluded, and the total follows every change of period or filter.
+- AC2 (D-104, E27): the form has `Datum plaćanja` and `Trošak za mjesec`, which offers the month of the date first and the 12 months before it, and follows the date (today from the till). An expense for an earlier month is that month's cost in `Bilans uspjeha`, the Troškovi and Profit cards, the chart and S-18's Isplaćeno, and the payment of its own day in `Novčani tok`. S-17 lists it by the day paid with `Za mjesec: <mjesec godina>` under the date. Every role has the field, at the desk too. A wrong month is corrected by voiding and entering the expense again.
 
 **US-18.2** As the owner, I manage categories (BR-131) with [Kategorije troškova].
 
