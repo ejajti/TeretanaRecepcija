@@ -2,7 +2,7 @@
 -- fixture month, BR-150 to BR-153 on the same fixtures, BR-157 (a manager gets nothing),
 -- and BR-120: a back-dated record counts in finance and never in a shift. D-68: the
 -- chart's year by months and month by days.
-select plan(55);
+select plan(56);
 
 -- Fixtures --------------------------------------------------------------------------
 insert into auth.users (id, email) values
@@ -188,9 +188,8 @@ insert into stock_movements (gym_id, product_id, type, quantity, unit_cost, unit
    ((select first from fin_month) + 9 + time '12:00') at time zone 'Europe/Podgorica');
 
 -- BR-155: E9 to E12 ---------------------------------------------------------------------
-set local request.jwt.claims = '{"sub": "cccccccc-0000-0000-0000-00000000a001"}';
-set local role authenticated;
-
+-- 0057: membership_shares is internal and no API role may call it, so the shares are
+-- checked as the database owner. The owner's reports below reach them as `authenticated`.
 select is((membership_shares('cccccccc-0000-0000-0000-000000020001', 69)).trainer_share,
           48.30::numeric, 'E9: Grupni €69 leaves the trainer €48.30');
 select is((membership_shares('cccccccc-0000-0000-0000-000000020001', 69)).gym_share,
@@ -213,6 +212,9 @@ select is((membership_shares('cccccccc-0000-0000-0000-000000020003', 70)).traine
           0.00::numeric, 'AS-7: a share that would be negative becomes zero');
 select is((membership_shares('cccccccc-0000-0000-0000-000000020003', 70)).warning,
           'Iznos manji od naknade teretani', 'AS-7: with the warning the owner must see');
+
+set local request.jwt.claims = '{"sub": "cccccccc-0000-0000-0000-00000000a001"}';
+set local role authenticated;
 
 -- BR-150 to BR-153 on the fixture month -------------------------------------------------
 select is(
@@ -341,6 +343,12 @@ select is(
    from json_array_elements(fin_trainer_stats((select first from fin_month)))
    where value ->> 'trainer_name' = 'pgTAP Tamara'),
   137.30::numeric, 'BR-156: €48.30 + €49.00 + €40.00 to pay out');
+-- 0057: the owner's trainer payments still show the shares no API role can call itself.
+select is(
+  (select sum((value ->> 'trainer_share')::numeric)
+   from json_array_elements(fin_trainer_payments('cccccccc-0000-0000-0000-00000000d001',
+                                                 (select first from fin_month)))),
+  137.30::numeric, 'BR-155: fin_trainer_payments shows Tamara €48.30 + €49.00 + €40.00');
 select is(
   (select (value ->> 'gym_total')::numeric
    from json_array_elements(fin_trainer_stats((select first from fin_month)))
