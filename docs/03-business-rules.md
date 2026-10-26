@@ -173,7 +173,7 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
     - 31.01.2027 → 28.02.2027.
   - Day plans: `end_date = start_date + N days`. Nedeljna 13.09 → 20.09.
   - The membership can be used on every date from `start_date` to `end_date`, both included.
-- **BR-052 (start date).** Let D = sale date (gym today; for back-dated sales, the owner's chosen date). "Comparable memberships" are the member's non-voided memberships whose coverage shares at least one visit type with the new plan. Let L = the latest `end_date` among them (none if there are no comparable memberships).
+- **BR-052 (start date).** Let D = sale date (gym today; for back-dated sales, the owner's chosen date). "Comparable memberships" are the member's non-voided memberships whose coverage shares at least one visit type with the new plan. Let L = the latest `end_date` among them (none if there are no comparable memberships). **D-107:** a comparable membership whose every type shared with the new plan has a limit that is used up counts here as ending on the day of its last session of those types, not on its `end_date`; one with a type left (no limit, or sessions remaining) keeps its `end_date`.
   1. **If L ≥ D:** start = L + 1 day. Reason: `Nastavlja se na članarinu koja važi do <L>`.
   2. **Otherwise**, take the member's unlinked unpaid visits whose visit type is covered by the new plan and whose local date is after L (or any date, if there is no L) and ≤ D.
      - If there are any, let V = the earliest visit date and compute E = end date for start V.
@@ -252,14 +252,15 @@ Every rule has an ID. Code comments and tests must reference these IDs, e.g. `//
   - A scan of the card then does not start a check-in. The automatic check-out is replaced by a real one: `checked_out_at` = now, `checked_out_by` = the staff member, `auto_checkout = false`. The result is the same as BR-072: `Odjavljen/a: <Ime Prezime> – <trajanje>`, with the duration from the check-in.
   - [Odjavi] in "U teretani" (BR-080) on a row the list still shows after the job closed it does the same.
   - A scan more than 60 minutes after the automatic check-out is a new check-in (BR-073 onward). The 60 minutes are fixed.
-- **BR-073 (visit type, D-102):**
+- **BR-073 (visit type, D-102, D-106):**
   - The options are **Teretana** plus every other type (Grupni, Personalni) covered by any of the member's memberships in the date range today, even if that type's sessions are used up.
   - **The question (S-03a) is asked only when the member's memberships in the date range today cover two or more visit types:** G+T, or Teretana together with Grupni or Personalni as separate memberships (or Grupni with Personalni). Otherwise the visit is recorded at once, with no question:
     - **Teretana only, or nothing valid:** a gym visit with the BR-074 default membership, also when several gym memberships cover today; unpaid when none does (BR-078).
+    - **Nothing valid, after a Grupni or Personalni (D-106):** when the member's non-voided membership that ended last was Grupni only, a scan at their class (as below, ±90 minutes) is an **unpaid group visit** with that membership's trainer and class; when it was Personalni only, an **unpaid personal visit** with its trainer. The next sale of that kind links it (BR-052 step 2), so the badge clears once the member pays. Outside the class, or when that trainer no longer meets BR-023, it is an unpaid gym visit.
     - **Grupni only:** the visit belongs to the group membership that covers today (earliest `end_date` first, BR-074), or, when every session is used up, to the one in its date range. When the member is **at their class**, it is a group visit with that membership's trainer and that class. Their class is the membership's fixed class time (BR-058a), when its trainer has an active slot at that time today starting within ±90 minutes of now (AS-12). A membership with no fixed class time (sold before D-71) takes the trainer's BR-075 default slot. Used-up sessions make it an unpaid group visit (BR-079). **Outside their class it is an unpaid gym visit:** a Grupni-only member may not use the gym at other times.
     - **Personalni only:** a personal visit with that membership's trainer (chosen as for Grupni), unpaid when its sessions are used up.
     - If that membership's trainer no longer meets BR-023 for the visit type, S-03a is shown so the receptionist picks one (BR-075, BR-076).
-  - "Prijavi odmah" at registration (US-06.1 AC2) records the visit by the same rule. A new G+T member, who would be asked, takes the preselection below (Teretana).
+  - "Prijavi odmah" at registration (US-06.1 AC2) records the visit by the same rule. A new G+T member, who would be asked, takes the preselection below (Teretana). D-106: no visit is recorded when the membership just sold is not valid today (a start chosen later, BR-052 step 4); a new Grupni member is checked in to their class **today at any hour** as a covered group visit (their own class time, otherwise the trainer's class today nearest now), and gets no visit on a day their trainer holds no class.
   - On S-03a, preselect Teretana if a membership covers gym today; else preselect Grupni; else Personalni. Enter confirms the preselection.
 - **BR-074 (which membership).**
   - Candidates are memberships that cover the chosen type today (BR-053).

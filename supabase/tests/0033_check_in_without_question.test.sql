@@ -3,7 +3,8 @@
 -- outside it, as an unpaid gym visit; Personalni only checks in with its trainer; used-up
 -- sessions give the unpaid (yellow or red) result; two gym memberships take the BR-074
 -- default. A trainer who no longer qualifies still sends the desk to S-03a. "Prijavi
--- odmah" at registration records the visit the same way.
+-- odmah" at registration records the visit the same way, except that a new Grupni member
+-- is checked in to their class today at any hour (D-106, migration 0058).
 select plan(27);
 
 -- Fixtures --------------------------------------------------------------------------
@@ -234,7 +235,7 @@ select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
           || '|' || (r -> 'check_in' ->> 'unpaid_count')
    from (select begin_check_in('52525252-0000-0000-0000-000000020013') as r) s),
-  'gym|false|1', 'BR-078: with nothing valid (a Grupni that has ended), an unpaid gym visit');
+  'group|false|1', 'D-106: with a Grupni that has ended, at their class an unpaid group visit');
 
 -- "Prijavi odmah" at registration (D-31) follows the same rule -----------------------------
 select is(
@@ -250,7 +251,7 @@ select is(
            'r3@pgtap.invalid', '1999-09-09', '52525252-0000-0000-0000-00000000f003',
            '52525252-0000-0000-0000-00000000d001', null, null, 'cash', true,
            (select (ts + interval '3 hours')::time from clock)) as r) s),
-  'gym|false', 'D-102: registered three hours before their class: an unpaid gym visit');
+  'group|true', 'D-106: registered three hours before their class: a covered group visit');
 select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
    from (select register_member('5252520004', 'Nova', 'Kombinovana', '067 520 004',

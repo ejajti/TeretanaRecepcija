@@ -56,6 +56,7 @@ export function MembershipFields({
   classTimeDefaults = {},
   fieldErrors = {},
   idPrefix,
+  onPreviewChange,
 }: {
   catalog: SaleCatalog;
   memberId: string | null;
@@ -64,6 +65,8 @@ export function MembershipFields({
   classTimeDefaults?: ClassTimeDefaults;
   fieldErrors?: Record<string, string>;
   idPrefix: string;
+  /** D-106: S-05 offers "Prijavi odmah" only while the preview is valid today. */
+  onPreviewChange?: (preview: MembershipPreview | null) => void;
 }) {
   // D-71: the member's earlier time with this trainer, while it is still scheduled.
   function suggestedClassTime(trainer: string): string {
@@ -120,6 +123,10 @@ export function MembershipFields({
       if (current === request.current) setPreview(result);
     });
   }, [memberId, planId, override]);
+
+  useEffect(() => {
+    onPreviewChange?.(preview);
+  }, [preview, onPreviewChange]);
 
   function choosePlan(id: string) {
     const next = catalog.plans.find((candidate) => candidate.id === id);

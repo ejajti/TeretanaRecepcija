@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { MembershipPreview } from "@/features/memberships/actions";
 import type { SaleCatalog } from "@/features/memberships/catalog";
 import { MembershipFields } from "@/features/memberships/components/membership-fields";
 import { me } from "@/lib/i18n/me";
@@ -79,6 +80,10 @@ function RegisterForm({
 }) {
   const [state, onSubmit, pending] = useFormAction(registerMember);
   const [cardCode, setCardCode] = useState<string | null>(initialCard ?? null);
+  const [checkIn, setCheckIn] = useState(true);
+  const [preview, setPreview] = useState<MembershipPreview | null>(null);
+  // D-106: a membership that is not valid today (its start chosen later) checks no one in.
+  const checkInBlocked = preview ? !preview.coversToday : false;
   const [duplicates, setDuplicates] = useState<Duplicate[]>([]);
   const [, startChecking] = useTransition();
   const form = useRef<HTMLFormElement>(null);
@@ -104,6 +109,12 @@ function RegisterForm({
               .replace("{number}", String(state.data.memberNumber))
               .replace("{name}", state.data.fullName)}
           </DialogDescription>
+          {/* D-106: a new Grupni member on a day their trainer holds no class. */}
+          {state.data.notCheckedIn ? (
+            <p className="text-sm text-muted-foreground">
+              {me.members.notCheckedInNoClass}
+            </p>
+          ) : null}
         </DialogHeader>
         <DialogFooter>
           <Button
@@ -204,19 +215,36 @@ function RegisterForm({
             catalog={catalog}
             memberId={null}
             fieldErrors={state.fieldErrors}
+            onPreviewChange={setPreview}
           />
         </section>
 
-        {/* S-05 item 4 and D-31: "Prijavi odmah", on by default. */}
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            name="checkInNow"
-            defaultChecked
-            className="size-4 accent-primary"
-          />
-          {me.reception.checkInNow}
-        </label>
+        {/* S-05 item 4 and D-31: "Prijavi odmah", on by default; D-106: off and
+            disabled while the membership is not valid today. */}
+        <div className="grid gap-1">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="checkInNow"
+              checked={checkIn && !checkInBlocked}
+              disabled={checkInBlocked}
+              onChange={(event) => setCheckIn(event.target.checked)}
+              aria-describedby={
+                checkInBlocked ? "register-check-in-hint" : undefined
+              }
+              className="size-4 accent-primary"
+            />
+            {me.reception.checkInNow}
+          </label>
+          {checkInBlocked ? (
+            <p
+              id="register-check-in-hint"
+              className="text-sm text-muted-foreground"
+            >
+              {me.members.checkInNotToday}
+            </p>
+          ) : null}
+        </div>
 
         <DialogFooter>
           <DialogClose asChild>

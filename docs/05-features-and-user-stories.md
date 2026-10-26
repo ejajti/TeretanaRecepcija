@@ -95,7 +95,7 @@ All features are **MVP**. Acceptance criteria (AC) are written so each one can b
 ## F-06 Member registration
 **US-06.1** As a receptionist, scanning an empty card opens registration and I sign the member up in one form (S-05).
 - AC1: The fields and validation follow BR-040–043, and the membership part follows F-08.
-- AC2: Save creates the member, assigns the card, creates the membership and payment and, if "Prijavi odmah" is checked (default), checks the member in, all in **one transaction**. If anything fails, nothing is saved. The visit is recorded as a scan would record it (BR-073, D-102), without a question; a new G+T member is checked in to the gym.
+- AC2: Save creates the member, assigns the card, creates the membership and payment and, if "Prijavi odmah" is checked (default), checks the member in, all in **one transaction**. If anything fails, nothing is saved. The visit is recorded as a scan would record it (BR-073, D-102), without a question; a new G+T member is checked in to the gym. D-106: only with a membership valid today (otherwise the checkbox is off and disabled); a new Grupni member is checked in to their class today at any hour, or not at all on a day their trainer holds no class.
 - AC3: After saving, a notice shows `Upišite ime olovkom na karticu: <Ime Prezime> (#<broj>)`.
 - AC4: [Novi član] on S-06 opens the same form with a "Skenirajte praznu karticu" field. Save is disabled until a valid unassigned card has been scanned.
 
@@ -129,7 +129,7 @@ All features are **MVP**. Acceptance criteria (AC) are written so each one can b
 ## F-10 Unpaid visits and warnings
 Covered by US-04.4, BR-078 and BR-079.
 
-**US-10.1** As staff, the profile shows the count of unlinked unpaid visits as a red badge `Neplaćeni dolasci: N`.
+**US-10.1** As staff, the profile shows the count of unlinked unpaid visits as a red badge `Neplaćeni dolasci: N`. In `Dolasci`, `Neplaćeno` marks the same unlinked visits; one a later sale linked (BR-052 step 2) is shown as an ordinary visit (D-106).
 
 ## F-11 Lost card replacement
 **US-11.1** As staff, I replace a lost card (BR-034) via [Izgubljena kartica] on S-07.

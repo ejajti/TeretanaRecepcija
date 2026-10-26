@@ -106,14 +106,14 @@ An `admin` sees everything an owner sees (D-58).
 1. `Kartica`: the card code (read-only when the dialog was opened by a scan; otherwise a scan field showing `Skenirajte praznu karticu`).
 2. `Podaci o članu`: Ime, Prezime, Telefon, Email, Datum rođenja. The date is typed as `dd.mm.yyyy`; typing digits alone is enough, as the dots are added automatically. The calendar button opens a calendar in which `Godina` and `Mjesec` are picked from lists, then the day (D-79).
 3. `Članarina`: the same fields as S-08, without the member selector.
-4. `Prijavi odmah`: a checkbox, on by default.
+4. `Prijavi odmah`: a checkbox, on by default. D-106: while the membership is not valid today (a start chosen later), it is off and disabled, with `Članarina danas ne važi, pa se član danas ne prijavljuje.`
 5. The duplicate warning (BR-043) appears inline when the phone or email field loses focus.
 
 **Buttons:** [Sačuvaj] and [Otkaži].
 
 **After success:**
 - a success dialog `Član #<broj> je kreiran. Upišite ime olovkom na karticu: <Ime Prezime>.`;
-- if "Prijavi odmah" was checked, the check-in result then follows (S-03b/c/d), with the visit recorded as a scan would record it (BR-073, D-102): a new Grupni member outside their class gets the yellow dialog of an unpaid gym visit.
+- if "Prijavi odmah" was checked, the check-in result then follows (S-03b/c/d), with the visit recorded as a scan would record it (BR-073, D-102), except that a new Grupni member is checked in to their class today at any hour (D-106); on a day their trainer holds no class, the success dialog adds `Član nije prijavljen: trener danas nema časa.` and no result follows.
 
 ## S-06 Members — `/members`
 - **Controls:** a search box (BR-044), a status filter (Svi / Sa aktivnom članarinom / Bez aktivne članarine), and [Novi član].

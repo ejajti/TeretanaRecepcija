@@ -92,7 +92,7 @@ select is(
      '26262626-0000-0000-0000-00000000f001', null, null, null, 'card', true, null,
      gym_today('26262626-0000-0000-0000-00000000b001') + 7)
    ->> 'member_number')::int,
-  2, 'N-31: a start next week is saved together with today''s check-in');
+  2, 'N-31: a start next week is saved although "Prijavi odmah" was checked');
 
 reset role;
 select is(
@@ -101,10 +101,10 @@ select is(
   gym_today('26262626-0000-0000-0000-00000000b001') + 7,
   'N-31: the membership starts next week');
 select is(
-  (select v.is_unpaid::text || '|' || (v.membership_id is null)::text
+  (select count(*)::int
    from visits v join members m on m.id = v.member_id
    where m.gym_id = '26262626-0000-0000-0000-00000000b001' and m.member_number = 2),
-  'true|true', 'BR-079: today''s visit is not covered by a membership that starts later');
+  0, 'D-106: a membership that starts later records no visit today');
 
 -- Without a date nothing changes -----------------------------------------------------------
 set local request.jwt.claims = '{"sub": "26262626-0000-0000-0000-00000000a001"}';

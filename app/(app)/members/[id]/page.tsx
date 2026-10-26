@@ -86,7 +86,7 @@ export default async function MemberPage({
       supabase
         .from("visits")
         .select(
-          "id, checked_in_at, checked_out_at, visit_type, is_unpaid, is_backdated, trainers(full_name)",
+          "id, checked_in_at, checked_out_at, visit_type, is_unpaid, membership_id, is_backdated, trainers(full_name)",
           { count: "exact" },
         )
         .eq("member_id", id)
@@ -94,6 +94,7 @@ export default async function MemberPage({
         .range(from, from + VISITS_PER_PAGE - 1)
         .returns<
           (Omit<ProfileVisit, "trainer_name"> & {
+            membership_id: string | null;
             trainers: { full_name: string } | null;
           })[]
         >(),
@@ -145,10 +146,15 @@ export default async function MemberPage({
           entered_by: names.get(created_by) ?? "—",
         }),
       )}
-      visits={(visits.data ?? []).map(({ trainers, ...visit }) => ({
-        ...visit,
-        trainer_name: trainers?.full_name ?? null,
-      }))}
+      visits={(visits.data ?? []).map(
+        ({ trainers, membership_id, ...visit }) => ({
+          ...visit,
+          // D-106: a visit a later sale linked (BR-052 step 2) is paid, so only the
+          // unlinked ones stay marked, as the badge counts them (US-10.1).
+          is_unpaid: visit.is_unpaid && membership_id === null,
+          trainer_name: trainers?.full_name ?? null,
+        }),
+      )}
       visitTotal={visits.count ?? 0}
       visitPage={visitPage}
       visitsPerPage={VISITS_PER_PAGE}

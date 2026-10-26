@@ -94,6 +94,8 @@ export type RegisteredMember = {
   fullName: string;
   /** "Prijavi odmah": the BR-079 result S-03b/c/d shows next. */
   checkIn: CheckInResult | null;
+  /** D-106: "Prijavi odmah" was checked, but the trainer holds no class today. */
+  notCheckedIn: boolean;
 };
 
 /**
@@ -118,6 +120,7 @@ export async function registerMember(
     return { fieldErrors: { dateOfBirth: me.members.dateOfBirthInvalid } };
 
   const supabase = await createClient();
+  const checkIn = formData.get("checkInNow") === "on";
   const { data, error } = await supabase.rpc("register_member", {
     p_card_code: value.cardCode,
     p_first: value.firstName,
@@ -126,7 +129,7 @@ export async function registerMember(
     p_email: value.email,
     p_dob: value.dateOfBirth,
     ...saleArguments(value),
-    p_check_in: formData.get("checkInNow") === "on",
+    p_check_in: checkIn,
   });
   if (error) {
     const code = rpcCode(error);
@@ -164,6 +167,7 @@ export async function registerMember(
       memberNumber: member.member_number,
       fullName: `${member.first_name} ${member.last_name}`,
       checkIn: member.check_in,
+      notCheckedIn: checkIn && !member.check_in,
     },
   };
 }

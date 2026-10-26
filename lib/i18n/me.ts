@@ -348,6 +348,9 @@ export const me = {
     createdTitle: "Član je kreiran",
     created:
       "Član #{number} je kreiran. Upišite ime olovkom na karticu: {name}.",
+    // D-106: "Prijavi odmah" only with a membership valid today and a class held today.
+    checkInNotToday: "Članarina danas ne važi, pa se član danas ne prijavljuje.",
+    notCheckedInNoClass: "Član nije prijavljen: trener danas nema časa.",
     firstNameInvalid: "Unesite ime (1–50 znakova).",
     lastNameInvalid: "Unesite prezime (1–50 znakova).",
     // N-16: the shift report cannot print emoji.

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 import { getErrorMessage } from "@/lib/errors";
+import { gymToday } from "@/lib/gym-date";
 import { me } from "@/lib/i18n/me";
 import { fieldErrorsOf, rpcCode, rpcFailure } from "@/lib/rpc";
 import { createClient } from "@/lib/supabase/server";
@@ -151,6 +152,8 @@ export type MembershipPreview = {
   endDate: string;
   reason: string;
   warning: string | null;
+  /** D-106: "Prijavi odmah" (S-05) checks in only with a membership valid today. */
+  coversToday: boolean;
 };
 
 const previewSchema = z.object({
@@ -177,6 +180,9 @@ export async function previewMembership(input: {
   if (!parsed.success) return null;
   const { memberId, planId, startOverride } = parsed.data;
   const supabase = await createClient();
+  const today = await gymToday(staff.gym_id);
+  const coversToday = (start: string, end: string) =>
+    start <= today && today <= end;
 
   let computed: MembershipPreview | null = null;
   if (memberId) {
@@ -200,17 +206,13 @@ export async function previewMembership(input: {
       endDate: row.end_date,
       reason: row.reason,
       warning: row.warning,
+      coversToday: coversToday(row.start_date, row.end_date),
     };
   }
 
   // A new member (S-05) has no history, so BR-052 step 3 applies; a date chosen by
   // staff (step 4, any role since D-97) replaces whatever was computed.
-  const start =
-    startOverride ??
-    computed?.startDate ??
-    ((await supabase.rpc("gym_today", { p_gym: staff.gym_id })).data as
-      string | null);
-  if (!start) return null;
+  const start = startOverride ?? computed?.startDate ?? today;
   if (computed && start === computed.startDate) return computed;
 
   const { data: plan } = await supabase
@@ -235,5 +237,6 @@ export async function previewMembership(input: {
       ? me.memberships.reasonOverride[staff.role]
       : me.memberships.reasonToday,
     warning: startOverride ? null : (computed?.warning ?? null),
+    coversToday: coversToday(start, end as string),
   };
 }
