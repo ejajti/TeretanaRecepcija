@@ -224,3 +224,30 @@ Do not start the next milestone until he approves.
 - All 11 E2E flows pass.
 - Every screen was checked at 1366×768 and 375 px (screenshots attached to the report).
 - A production deployment was completed with a smoke test (login, scan, close shift).
+
+---
+
+## Maintenance (after release)
+Work found while the gym uses the app. It follows the same steps as a milestone, except that the full E2E suite is never run against the live database: only the specs for what changed, each with its own test gym.
+
+### Dependency security updates (found 26.10.2026)
+GitHub Dependabot reported 22 alerts on `main` (3 critical, 6 high); `npm audit` groups them into 7 packages. On 26.10.2026 none was found exploitable in this app, but each has a fix.
+
+| Package | Now | Update to | Exposure in this app |
+|---|---|---|---|
+| `next` | 16.3.5 | 16.4.3 | The critical one (remote code execution) is in `next/og` `ImageResponse`, which the app does not use; the others are moderate |
+| `zod` | 4.6.5 | 4.6.7 | Memory use on oversized collections; no schema uses `z.array`, `z.set` or `z.record` |
+| `sharp`, `source-map-js` | transitive | `npm audit fix` | `sharp` only serves the gym logo through `next/image`; `source-map-js` runs at build time only |
+| `vitest` (with `@vitest/mocker`, `vite`) | 5.0.1 | 5.0.5 | Development and tests only |
+
+**Tasks:**
+- Pin the new exact versions in `package.json` (doc 08 §9) and update `package-lock.json`; `@next/env` and `eslint-config-next` follow `next`.
+- Run `npm audit` again.
+
+**When:** after the gym closes. A change to `package.json` starts a new production build on Vercel (D-87).
+
+**Done when:**
+- `lint`, `typecheck`, `test` and `test:db` pass.
+- The Playwright specs `auth`, `reception` and `finance` pass; each creates and removes its own test gym.
+- The Vercel production deployment succeeded, and the owner can sign in and open the finance pages. Nobody signs in as a receptionist, since that opens a shift.
+- `npm audit` reports 0 vulnerabilities and Dependabot shows no open alert.
