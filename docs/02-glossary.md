@@ -87,6 +87,7 @@ Use these terms **exactly** in the documents, code and UI.
 | Cash flow | `fin_statement` | Novčani tok | Primljeno, Plaćena nova roba, Ostala plaćanja and Neto promjena novca (BR-158). Owner only. |
 | Trainer share | computed | Za trenera | The part of a trainer-linked payment that belongs to the trainer. |
 | Gym share | computed | Za teretanu | Payment amount minus trainer share. |
+| Trainer revenue by kind | computed | Prihod od grupnih / Prihod od personalnih | A trainer's attributed payments of a month (BR-154), split into Grupni and G+T, and Personalni (BR-156, D-108). Owner only. |
 | Trainer fee | `personal_gym_fee` | Naknada teretani | Amount per personal client that goes to the gym (e.g. €80). |
 | Payout | expense with `trainer_id` | Isplata treneru | Actual money paid to a trainer, recorded as a "Plate" expense. |
 | Void | `voided_at`, `void_reason` | Poništi / Poništeno | Cancels a record without deleting it. A reason is required. |

@@ -25,6 +25,9 @@ type TrainerRow = {
   personal_sessions: number;
   /** Decimal text, as numeric(10,2) arrives (BR-003). */
   revenue: string;
+  /** D-108: Grupni and G+T, and Personalni; together they are `revenue`. */
+  revenue_group: string;
+  revenue_personal: string;
   trainer_total: string;
   gym_total: string;
   undefined_count: number;
@@ -102,7 +105,8 @@ export default async function TrainersPage({
               <Th className="text-right">{me.finance.clients}</Th>
               <Th className="text-right">{me.finance.groupSessions}</Th>
               <Th className="text-right">{me.finance.personalSessions}</Th>
-              <Th className="text-right">{me.finance.revenue}</Th>
+              <Th className="text-right">{me.finance.revenueGroup}</Th>
+              <Th className="text-right">{me.finance.revenuePersonal}</Th>
               <Th className="text-right">{me.finance.forTrainer}</Th>
               <Th className="text-right">{me.finance.forGym}</Th>
               <Th className="text-right">{me.finance.paidOut}</Th>
@@ -138,7 +142,10 @@ export default async function TrainersPage({
                   {row.personal_sessions}
                 </Td>
                 <Td className="text-right tabular-nums">
-                  {formatMoney(row.revenue)}
+                  {formatMoney(row.revenue_group)}
+                </Td>
+                <Td className="text-right tabular-nums">
+                  {formatMoney(row.revenue_personal)}
                 </Td>
                 <Td className="text-right font-medium tabular-nums">
                   {formatMoney(row.trainer_total)}

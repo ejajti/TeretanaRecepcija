@@ -237,7 +237,7 @@ An `admin` sees everything an owner sees (D-58).
 
 ## S-18 Trainers — `/finance/trainers` (owner)
 - **Controls:** a month selector (default: current month).
-- **Table:** one row per trainer with the BR-156 columns and an [Evidentiraj isplatu] button.
+- **Table:** one row per trainer with the BR-156 columns and an [Evidentiraj isplatu] button. Since D-108 the revenue is two columns, `Prihod od grupnih` and `Prihod od personalnih`; the chart above the table stays the whole `Prihod` per trainer.
 - **Detail:** clicking a trainer opens the list of attributed payments with their shares.
 
 ## S-19 Shifts — `/finance/shifts` (owner)

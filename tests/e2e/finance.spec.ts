@@ -369,8 +369,10 @@ test("Flow 9 and E9–E12: S-18 shows each trainer's share, and none for an unkn
   await page.goto(`/finance/trainers?month=${monthValue}`);
 
   const tamara = page.getByRole("row", { name: /E2E Tamara/ });
+  // D-108: Grupni €69 + G+T €99 are the group revenue, Personalni €120 the personal one.
+  await expect(tamara).toContainText("168,00 €");
+  await expect(tamara).toContainText("120,00 €");
   // E9 €48.30 + E10 €49.00 + E11 €40.00.
-  await expect(tamara).toContainText("288,00 €");
   await expect(tamara).toContainText("137,30 €");
   await expect(tamara).toContainText("150,70 €");
 

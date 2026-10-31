@@ -2603,11 +2603,12 @@ Legenda: svaki test ima polje za rezultat. Popunjavajte ga dok radite.
   trenera; probajte [Evidentiraj isplatu].
 - **Test podaci:** tekući mjesec, pa mjesec bez prometa
 - **Očekivani rezultat:** kolone „Klijenti“, „Održani grupni treninzi“, „Personalni treninzi“,
-  „Prihod“, „Za trenera (za isplatu)“, „Za teretanu“, „Isplaćeno“, „Razlika“. Za Julija (naknada
+  „Prihod od grupnih“, „Prihod od personalnih“ (D-108; zajedno su prihod trenera), „Za trenera (za isplatu)“, „Za teretanu“, „Isplaćeno“, „Razlika“. Za Julija (naknada
   nije definisana) stoji „nije definisano“. [Evidentiraj isplatu] otvara formu troška kategorije
   „Plate“ sa unaprijed izabranim trenerom. Prazan mjesec: „Nema uplata za izabrani mjesec.“
 - **Gdje provjeriti:** UI
 - [x] Prošlo  [ ] Palo  Napomena: **23.09.2026 — PROŠLO (uz popravku N-20).** `test-plan-high-f.spec.ts`: sve kolone iz plana su tu. Tamara (Grupni 69 uz 70 % + G+T 99 uz 40 € teretani i 100 %): Klijenti 2, Prihod 168,00, Za trenera 107,30, Za teretanu 60,70, Razlika 107,30 €. Julija (personalna, naknada nije definisana): ispod imena „nije definisano: 1“, u detalju „nije definisano“. Detalj trenera („Uplate trenera — …“) navodi člana i plan. [Evidentiraj isplatu] otvara formu troška sa kategorijom plata, izabranim trenerom, opisom „Evidentiraj isplatu“ i iznosom razlike — iznos je bio upisan kao `107.30` (tačka), sada `107,30` (**N-20**). Mjesec bez prometa → „Nema uplata za izabrani mjesec.“ u detalju. Raniji dokaz (22.09.): E2E finance.spec.ts + DB 0012: E9–E12 obračun po treneru i nepoznata naknada. Sve isplate/filteri nisu provjereni kroz UI.
+- [x] Prošlo  [ ] Palo  Napomena: **31.10.2026 — PROŠLO (D-108).** `test-plan-high-f.spec.ts` (FIN-11 sa „the desk's day“): kolone „Prihod od grupnih“ i „Prihod od personalnih“ umjesto „Prihod“. E2E Tamara (Grupni + G+T): 168,00 € grupni, 0,00 € personalni; E2E Julija (Personalni): 0,00 € grupni, 100,00 € personalni; ostale kolone kao prije (107,30 / 60,70). `finance.spec.ts` Flow 9: E2E Tamara 168,00 € grupni i 120,00 € personalni (E9–E11).
 
 ### [FIN-12] Ekran „Smjene“ (S-19)
 - **Prioritet:** Visoko
@@ -4520,6 +4521,28 @@ ni postojeću funkciju; aplikacija koja je radila za vrijeme izmjene je novu fun
 | `npm run lint`, `npm run typecheck`, unit (`tests/unit`) | PROŠLO (240 unit, 6 novih) |
 | E2E `personal-roster` (desktop i mobilni), svoja E2E teretana koju briše | **4 prošlo**. Poslije: u bazi je samo KP Fitness, bez E2E teretana i korisnika |
 | Ostali E2E | po zahtjevu nisu pokretani (samo novi test). `personal-roster` provjerava i da tab Grupni ostaje podrazumijevan sa grupnom listom; `trainer-roster.spec.ts` (D-72) nije ponovo pušten |
+
+### 9.28 Dopuna — prihod trenera po grupnim i personalnim (D-108), 31.10.2026
+
+**D-108 (zahtjev 31.10.2026):** na Finansije → Treneri (S-18) kolona „Prihod“ je podijeljena na
+**„Prihod od grupnih“** (Grupni i G+T) i **„Prihod od personalnih“** (Personalni), da vlasnik vidi
+razliku po treneru i mjesecu. Zajedno su prihod trenera; grafikon „Prihod — Treneri“ iznad tabele
+i dalje pokazuje cijeli prihod. Ostale kolone se ne mijenjaju. Migracija 0061 zamjenjuje
+`fin_trainer_stats` verzijom koja uz sva dosadašnja polja vraća `revenue_group` i `revenue_personal`.
+
+Izmijenjen slučaj: FIN-11. Pravilo BR-156 u doc 03, US-19.1 AC3 u doc 05.
+
+**Teretana radi:** postojeći podaci nisu mijenjani ni brisani. Migracija ne dira nijednu tabelu ni
+red; aplikacija koja je radila za vrijeme izmjene čita ista polja kao prije.
+
+| Provjera 31.10.2026 | Rezultat |
+|---|---|
+| 0061 i pgTAP u transakciji koja se poništava (produkcija) | za septembar, oktobar i novembar 2026 sva dosadašnja polja su ista kao prije migracije; za svakog trenera grupni + personalni = prihod (oktobar: Tamara 1035,00 + 158,00 = 1193,00 €, Julija 552,00 + 380,00 = 932,00 €); `0012_finance` (61), `0019_manager_finance`, `0035_expense_cost_month` i `0037_internal_helpers` prolaze; poslije poništavanja u bazi je bila stara funkcija |
+| Migracija 0061 na produkciji | primijenjena uz odobrenje (`db:push` je prije toga pokazao samo 0061) |
+| `npm run test:db` | **40/40** (`0012_finance` sa 5 novih provjera, 61) |
+| `npm run lint`, `npm run typecheck`, unit (`tests/unit`) | PROŠLO (241 unit) |
+| E2E `finance.spec.ts` Flow 9 (desktop i mobilni), `test-plan-high-f.spec.ts` FIN-11 sa „the desk's day“ (desktop), `screens.spec.ts` S-18 (desktop i mobilni) | **6 prošlo**, 2 preskočena (FIN-11 radi samo na desktopu). Svaki test pravi svoju E2E teretanu i briše je; poslije je u bazi samo KP Fitness |
+| Ostali E2E | po zahtjevu nisu pokretani (samo testovi za S-18) |
 
 *Kraj plana. Novi rezultati upisani su uz slučajeve; neoznačeni kvadratići nisu automatski prolaz.*
 

@@ -210,6 +210,7 @@ Covered by US-04.4, BR-078 and BR-079.
 **US-19.1** As the owner, I see BR-156 metrics per trainer for a chosen month (S-18).
 - AC1: Undefined shares are shown as "nije definisano" (E12).
 - AC2: [Evidentiraj isplatu] opens the S-17 expense form prefilled with category Plate, the trainer, and the amount = Razlika (editable).
+- AC3 (D-108): the revenue is shown as `Prihod od grupnih` (Grupni and G+T) and `Prihod od personalnih` (Personalni), which add up to the trainer's revenue.
 
 ## F-20 Visit statistics
 **US-20.1** As an owner or manager, I see visit statistics for a period (S-15):

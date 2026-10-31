@@ -2,7 +2,7 @@
 -- fixture month, BR-150 to BR-153 on the same fixtures, BR-157 (a manager gets nothing),
 -- and BR-120: a back-dated record counts in finance and never in a shift. D-68: the
 -- chart's year by months and month by days.
-select plan(56);
+select plan(61);
 
 -- Fixtures --------------------------------------------------------------------------
 insert into auth.users (id, email) values
@@ -338,6 +338,33 @@ select is(
    from json_array_elements(fin_trainer_stats((select first from fin_month)))
    where value ->> 'trainer_name' = 'pgTAP Tamara'),
   288.00::numeric, 'BR-156: €69 + €99 + €120 of attributed payments');
+-- D-108: Grupni and G+T are the group revenue, Personalni the personal one.
+select is(
+  (select (value ->> 'revenue_group')::numeric
+   from json_array_elements(fin_trainer_stats((select first from fin_month)))
+   where value ->> 'trainer_name' = 'pgTAP Tamara'),
+  168.00::numeric, 'D-108: Tamara''s group revenue is Grupni €69 + G+T €99');
+select is(
+  (select (value ->> 'revenue_personal')::numeric
+   from json_array_elements(fin_trainer_stats((select first from fin_month)))
+   where value ->> 'trainer_name' = 'pgTAP Tamara'),
+  120.00::numeric, 'D-108: and her personal revenue is Personalni €120');
+select is(
+  (select (value ->> 'revenue_group')::numeric
+   from json_array_elements(fin_trainer_stats((select first from fin_month)))
+   where value ->> 'trainer_name' = 'pgTAP Julija'),
+  0.00::numeric, 'D-108: a trainer with only Personalni has no group revenue');
+select is(
+  (select (value ->> 'revenue_personal')::numeric
+   from json_array_elements(fin_trainer_stats((select first from fin_month)))
+   where value ->> 'trainer_name' = 'pgTAP Julija'),
+  100.00::numeric, 'D-108: Julija''s personal revenue counts even with no share defined');
+select is(
+  (select count(*)::int
+   from json_array_elements(fin_trainer_stats((select first from fin_month)))
+   where (value ->> 'revenue_group')::numeric + (value ->> 'revenue_personal')::numeric
+         <> (value ->> 'revenue')::numeric),
+  0, 'D-108: for every trainer the group and personal revenue add up to the revenue');
 select is(
   (select (value ->> 'trainer_total')::numeric
    from json_array_elements(fin_trainer_stats((select first from fin_month)))

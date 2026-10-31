@@ -609,7 +609,9 @@ test("FIN-11: trainers — columns, undefined fee, detail, payout and an empty m
     "Klijenti",
     "Održani grupni treninzi",
     "Personalni treninzi",
-    "Prihod",
+    // D-108: Prihod is split into group and personal.
+    "Prihod od grupnih",
+    "Prihod od personalnih",
     "Za trenera (za isplatu)",
     "Za teretanu",
     "Isplaćeno",

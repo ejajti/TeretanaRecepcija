@@ -553,11 +553,14 @@ Buying goods and the cost of the goods sold are two different things (D-92). A s
 | Klijenti | Distinct members with a non-voided membership payment attributed to the trainer in that month |
 | Održani grupni treninzi | Distinct (local date, class slot) pairs among group visits with that trainer. Visits without a slot count as one pair per date. |
 | Personalni treninzi | Number of personal visits with that trainer |
-| Prihod | Sum of attributed payments |
+| Prihod od grupnih (D-108) | Sum of attributed payments of Grupni and G+T plans |
+| Prihod od personalnih (D-108) | Sum of attributed payments of Personalni plans |
 | Za trenera (za isplatu) | Sum of defined trainer shares |
 | Za teretanu | Sum of defined gym shares |
 | Isplaćeno | Sum of non-voided salary-category expenses with this trainer for that month: paid in it, or paid later for it (`Trošak za mjesec`, D-104) |
 | Razlika | Za isplatu − Isplaćeno |
+
+  The two revenue columns always add up to the trainer's revenue (Prihod, BR-154), which S-18's chart `Prihod — Treneri` still shows (D-108).
 
 - **BR-157:** No value from §14 is ever returned to managers or receptionists, with one exception (D-80): a manager receives BR-150 income and BR-151 expenses **without salary categories**, for today, this week or this month only. A manager's expenses are what was paid, stock-ins included, exactly as S-17 lists them. BR-145 Manjak robe, BR-152 profit, BR-153 cost of goods sold and bar profit, BR-154 to BR-156, BR-158 and BR-159 never reach a manager.
 - **BR-158 (cash flow, D-92):** for a period, by the day each expense was paid (`spent_on`), whatever month it is for (D-104):

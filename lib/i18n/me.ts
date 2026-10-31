@@ -880,6 +880,9 @@ export const me = {
     groupSessions: "Održani grupni treninzi",
     personalSessions: "Personalni treninzi",
     revenue: "Prihod",
+    // D-108: S-18 splits Prihod into group (Grupni, G+T) and personal (Personalni).
+    revenueGroup: "Prihod od grupnih",
+    revenuePersonal: "Prihod od personalnih",
     forTrainer: "Za trenera (za isplatu)",
     forGym: "Za teretanu",
     paidOut: "Isplaćeno",
