@@ -230,19 +230,31 @@ Do not start the next milestone until he approves.
 ## Maintenance (after release)
 Work found while the gym uses the app. It follows the same steps as a milestone, except that the full E2E suite is never run against the live database: only the specs for what changed, each with its own test gym.
 
-### Dependency security updates (found 26.10.2026)
-GitHub Dependabot reported 22 alerts on `main` (3 critical, 6 high); `npm audit` groups them into 7 packages. On 26.10.2026 none was found exploitable in this app, but each has a fix.
+### Dependency security update: `next` (found 26.10.2026, narrowed 31.10.2026)
+GitHub Dependabot reports 22 alerts on `main`; on 31.10.2026 `npm audit` listed 30 packages (1 critical, 4 high, 25 moderate). Each was checked against this app, and only the ones that reach it are fixed.
 
-| Package | Now | Update to | Exposure in this app |
-|---|---|---|---|
-| `next` | 16.3.5 | 16.4.3 | The critical one (remote code execution) is in `next/og` `ImageResponse`, which the app does not use; the others are moderate |
-| `zod` | 4.6.5 | 4.6.7 | Memory use on oversized collections; no schema uses `z.array`, `z.set` or `z.record` |
-| `sharp`, `source-map-js` | transitive | `npm audit fix` | `sharp` only serves the gym logo through `next/image`; `source-map-js` runs at build time only |
-| `vitest` (with `@vitest/mocker`, `vite`) | 5.0.1 | 5.0.5 | Development and tests only |
+**Fixed by this task.** Both are in `next` 16.3.5 and are fixed in 16.4.3:
+
+| Advisory | Severity | Why it reaches this app |
+|---|---|---|
+| Denial of Service in App Router using Server Actions (≤ 16.4.0) | high | Every form in the app (sales, check-in, expenses, sign-in) is a Server Action, and the app is public on the internet |
+| Unauthenticated remote code execution in the Image Optimization API when SVG files are used (≤ 16.4.0) | critical | Probably not reached: there is no SVG in `public/`, a logo upload accepts only PNG and JPEG, and the one `next/image` (the logo on S-27) is `unoptimized`. It is fixed by the same update, so it is not ruled out |
+
+The update also closes every other `next` advisory (`next/og`, `use cache`, SSG/ISR cache, image SSRF, metadata routes, the dev server), since one version fixes them all.
+
+**Not fixed: they do not reach this app.** Their Dependabot alerts stay open on purpose.
+
+| Package | Advisory | Why it does not reach this app |
+|---|---|---|
+| `zod` 4.6.5 | Memory use on oversized constrained collections | No schema uses `z.array`, `z.set` or `z.record` |
+| `sharp` | librsvg (SVG) | No SVG goes through the app |
+| `source-map-js` | Event-loop denial of service | Build time only |
+| `vitest`, `vite`, `@vitest/mocker` | Code injection, file exposure, Windows command flags | The developer's machine while tests run; never in production |
+| `minimatch`, `glob` (through `eslint` and `archiver`) | Denial of service through glob patterns | `eslint` is a development tool; `lib/backup.ts` uses `archiver` without glob. `npm audit` offers only downgrades (`eslint` 4, `archiver` 4), which are not applied |
 
 **Tasks:**
-- Pin the new exact versions in `package.json` (doc 08 §9) and update `package-lock.json`; `@next/env` and `eslint-config-next` follow `next`.
-- Run `npm audit` again.
+- Pin `next`, `@next/env` and `eslint-config-next` to `16.4.3` in `package.json` (doc 08 §9; `@next/env` and `eslint-config-next` follow `next`) and update `package-lock.json`. No other package changes, and `npm audit fix` is not run.
+- Run `npm audit` again and confirm `next` is no longer listed.
 
 **When:** after the gym closes. A change to `package.json` starts a new production build on Vercel (D-87).
 
@@ -250,4 +262,4 @@ GitHub Dependabot reported 22 alerts on `main` (3 critical, 6 high); `npm audit`
 - `lint`, `typecheck`, `test` and `test:db` pass.
 - The Playwright specs `auth`, `reception` and `finance` pass; each creates and removes its own test gym.
 - The Vercel production deployment succeeded, and the owner can sign in and open the finance pages. Nobody signs in as a receptionist, since that opens a shift.
-- `npm audit` reports 0 vulnerabilities and Dependabot shows no open alert.
+- `npm audit` no longer lists `next`. The advisories in "Not fixed" may stay listed.
