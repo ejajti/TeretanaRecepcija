@@ -349,7 +349,8 @@ export const me = {
     created:
       "Član #{number} je kreiran. Upišite ime olovkom na karticu: {name}.",
     // D-106: "Prijavi odmah" only with a membership valid today and a class held today.
-    checkInNotToday: "Članarina danas ne važi, pa se član danas ne prijavljuje.",
+    checkInNotToday:
+      "Članarina danas ne važi, pa se član danas ne prijavljuje.",
     notCheckedInNoClass: "Član nije prijavljen: trener danas nema časa.",
     firstNameInvalid: "Unesite ime (1–50 znakova).",
     lastNameInvalid: "Unesite prezime (1–50 znakova).",
@@ -404,13 +405,18 @@ export const me = {
     columnVisitType: "Vrsta dolaska",
     unpaid: "Neplaćeno",
     noVisits: "Nema dolazaka.",
+    // D-110: an unpaid gym visit that was a group class after all.
+    toGroup: "Ipak grupni trening",
+    toGroupText:
+      "Dolazak {date} u {time} postaje grupni trening i troši jedan termin članarine „{plan}“.",
+    toGroupSaved: "Dolazak je upisan kao grupni trening.",
     // S-09
     lostCardFee: "Naknada za novu karticu: {amount}",
     lostCardContinue: "Nastavi",
     lostCardScan: "Skenirajte novu praznu karticu",
     lostCardDone: "Nova kartica dodijeljena. Stara kartica je poništena.",
   },
-  // S-03 Recepcija and its dialogs S-03a to S-03e (doc 06, F-04, F-05, F-10).
+  // S-03 Recepcija and its dialogs S-03a to S-03f (doc 06, F-04, F-05, F-10).
   reception: {
     title: "Recepcija",
     prompt: "Skenirajte karticu",
@@ -438,6 +444,16 @@ export const me = {
     unpaidYellow: "Članarina nije važeća – neplaćeni dolazak.",
     unpaidRed: "PAŽNJA: {count}. neplaćeni dolazak!",
     renew: "Produži članarinu",
+    // D-109: S-03f, before anything is recorded.
+    renewExpired: "Članarina „{plan}“ je istekla {date}.",
+    renewUsedUp: "Iskorišteni su svi termini članarine „{plan}“.",
+    renewNone: "Član nema važeću članarinu.",
+    renewUnpaid: "PAŽNJA: neplaćeni dolasci: {count}",
+    renewQuestion:
+      "Član još nije prijavljen. Produžiti članarinu ili upisati neplaćeni dolazak?",
+    unpaidVisit: "Neplaćeni dolazak",
+    unpaidRecorded: "Upisan je neplaćeni dolazak: {name}.",
+    notCheckedIn: "Dolazak nije upisan: {name} mora ponovo skenirati karticu.",
     manualCheckIn: "Ručna prijava",
     manualCheckOut: "Ručna odjava",
     checkInNow: "Prijavi odmah",
@@ -707,6 +723,20 @@ export const me = {
       "Dani pauze od danas se vraćaju i „Važi do“ se skraćuje za njih.",
     pauseEndSaved: "Pauza je prekinuta.",
     pauseEndedByVisit: "Pauza članarine je završena jer je član došao.",
+    // D-111 (BR-055a): the owner and the admin change the sessions left, on S-07.
+    editSessions: "Izmijeni broj termina",
+    sessionsTitle: "Izmijeni broj termina",
+    sessionsText:
+      "Mijenja se samo broj termina. Datumi, iznos i uplata ostaju isti.",
+    sessionsLeftLabel: "{type}: preostalo termina",
+    sessionsUsed: "Iskorišteno {used} od {limit}.",
+    sessionsTotal: "Ukupno termina: {total}.",
+    sessionsLinkPreview:
+      "Neplaćeni dolasci iz perioda ove članarine koji se povezuju: {count}. Oni troše dodate termine, pa preostaje {left}.",
+    sessionsLeftInvalid: "Unesite broj od {min} do 99.",
+    sessionsSaved: "Broj termina je sačuvan.",
+    sessionsSavedLinked:
+      "Broj termina je sačuvan. Povezani neplaćeni dolasci: {count}.",
   },
   // S-16 to S-22 (F-17 to F-19, F-23, F-24), owner only.
   finance: {
@@ -1010,6 +1040,8 @@ export const me = {
       members: "Članovi",
       memberships: "Članarine",
       membership_pauses: "Pauze članarina",
+      // D-110: a visit turned into a group visit.
+      visits: "Dolasci",
       payments: "Uplate",
       expenses: "Troškovi",
       recurring_expenses: "Fiksni troškovi",
@@ -1050,6 +1082,8 @@ export const me = {
       start_date: "Početak",
       end_date: "Važi do",
       start_reason: "Razlog početka",
+      // D-110: visits.
+      visit_type: "Vrsta dolaska",
       // D-100: membership_pauses.
       paused_from: "Pauza od",
       paused_until: "Pauza do",
@@ -1233,6 +1267,14 @@ export const me = {
     E_PAUSE_OVERLAP: "Članarina je u tom periodu već pauzirana.",
     E_PAUSE_VISITED:
       "Član je danas već došao na ovu članarinu, pa pauza može početi najranije sjutra.",
+    // D-111: [Izmijeni broj termina].
+    E_SESSIONS_INVALID:
+      "Preostalo termina može biti od 0 do 99, a najmanje 1 dok nijedan termin nije iskorišten.",
+    // D-110: [Ipak grupni trening].
+    E_VISIT_NOT_UNPAID_GYM:
+      "Samo neplaćeni dolazak u teretanu može postati grupni trening.",
+    E_GROUP_VISIT_EXISTS: "Član tog dana već ima grupni trening.",
+    E_NO_GROUP_MEMBERSHIP: "Član tog dana nema Grupni sa slobodnim terminom.",
     E_AMOUNT_LOCKED: "Samo vlasnik može mijenjati iznos.",
     E_RECORD_NOT_EDITABLE:
       "Ova stavka se ne može mijenjati (smjena je zaključena).",

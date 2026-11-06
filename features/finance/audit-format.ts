@@ -53,6 +53,7 @@ const HIDDEN = new Set([
   "anonymized_at",
   "shift_id",
   "membership_id",
+  "class_slot_id",
   "stock_movement_id",
   "recurring_expense_id",
 ]);
@@ -113,6 +114,8 @@ const ENUMS: Record<string, Record<string, string>> = {
   },
   duration_unit: { day: me.audit.values.days, month: me.audit.values.months },
   role: me.roles,
+  // D-110: a visit turned into a group visit.
+  visit_type: me.visitTypes,
 };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -210,6 +213,9 @@ export function auditSubject(
     case "membership_pauses":
       // D-100: the days the pause holds.
       return `${ref("paused_from")} – ${ref("paused_until")}`;
+    case "visits":
+      // D-110: whose visit, and when it was.
+      return joined(member(), ref("checked_in_at"));
     case "payments":
       if (data.kind === "day_pass")
         return `${me.audit.values.dayPass} × ${text("quantity")}`;

@@ -4,8 +4,9 @@
 -- (BR-052 step 2) and the unpaid badge clears. Everyone else still gets an unpaid gym
 -- visit. "Prijavi odmah" records a visit only with a membership valid today, and checks
 -- a new Grupni member in to their class today at any hour, or not at all on a day
--- without one.
-select plan(20);
+-- without one. D-109 (migration 0062): the scan asks first, and these are the visits
+-- [Neplaćeni dolazak] records.
+select plan(22);
 
 -- Fixtures --------------------------------------------------------------------------
 insert into auth.users (id, email) values
@@ -127,10 +128,19 @@ set local request.jwt.claims = '{"sub": "58585858-0000-0000-0000-00000000a001"}'
 set local role authenticated;
 
 -- Grupni has ended ----------------------------------------------------------------------
+-- D-109: the scan asks first (S-03f); [Neplaćeni dolazak] records what follows.
+select is(
+  (select (r ->> 'result') || '|' || (r ->> 'reason') || '|' || (r ->> 'plan_name') || '|'
+          || ((r -> 'renewal' ->> 'plan_id') = '58585858-0000-0000-0000-00000000f003')
+   from (select begin_check_in('58585858-0000-0000-0000-000000020001') as r) s),
+  'renew|expired|pgTAP Grupni|true', 'D-109: a Grupni that has ended asks to renew it first');
+select is(
+  (select count(*)::int from visits where member_id = '58585858-0000-0000-0000-000000020001'),
+  0, 'D-109: and records nothing yet');
 select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
           || '|' || (r -> 'check_in' ->> 'unpaid_count')
-   from (select begin_check_in('58585858-0000-0000-0000-000000020001') as r) s),
+   from (select check_in_unpaid('58585858-0000-0000-0000-000000020001', true) as r) s),
   'group|false|1', 'D-106: a Grupni that has ended, at their class: an unpaid group visit');
 select is(
   (select (trainer_id = '58585858-0000-0000-0000-00000000d001') || '|'
@@ -156,13 +166,13 @@ select is(
   0, 'US-10.1: no unlinked unpaid visit is left, so the badge clears');
 
 select is(
-  begin_check_in('58585858-0000-0000-0000-000000020002') -> 'check_in' ->> 'visit_type',
+  check_in_unpaid('58585858-0000-0000-0000-000000020002', true) -> 'check_in' ->> 'visit_type',
   'gym', 'D-106: three hours before their class, still an unpaid gym visit');
 
 -- Personalni has ended ------------------------------------------------------------------
 select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
-   from (select begin_check_in('58585858-0000-0000-0000-000000020003') as r) s),
+   from (select check_in_unpaid('58585858-0000-0000-0000-000000020003', true) as r) s),
   'personal|false', 'D-106: a Personalni that has ended: an unpaid personal visit');
 select is(
   (select (trainer_id = '58585858-0000-0000-0000-00000000d002') || '|' || (class_slot_id is null)
@@ -175,19 +185,19 @@ select is(
 
 -- Everyone else: an unpaid gym visit, as before ---------------------------------------------
 select is(
-  begin_check_in('58585858-0000-0000-0000-000000020004') ->> 'result', 'checked_in',
+  check_in_unpaid('58585858-0000-0000-0000-000000020004', true) ->> 'result', 'checked_in',
   'D-106: a G+T that has ended asks nothing');
 select is(
   (select visit_type::text from visits where member_id = '58585858-0000-0000-0000-000000020004'),
   'gym', 'D-106: and gives an unpaid gym visit, which the next G+T covers');
 select is(
-  begin_check_in('58585858-0000-0000-0000-000000020005') -> 'check_in' ->> 'visit_type',
+  check_in_unpaid('58585858-0000-0000-0000-000000020005', true) -> 'check_in' ->> 'visit_type',
   'gym', 'D-106 (BR-023): a trainer who no longer runs group classes gives a gym visit');
 select is(
-  begin_check_in('58585858-0000-0000-0000-000000020006') -> 'check_in' ->> 'visit_type',
+  check_in_unpaid('58585858-0000-0000-0000-000000020006', true) -> 'check_in' ->> 'visit_type',
   'gym', 'D-106: the membership that ended last decides (a Mjesečna)');
 select is(
-  begin_check_in('58585858-0000-0000-0000-000000020007') -> 'check_in' ->> 'visit_type',
+  check_in_unpaid('58585858-0000-0000-0000-000000020007', true) -> 'check_in' ->> 'visit_type',
   'gym', 'D-106: a voided Grupni does not count');
 
 -- "Prijavi odmah" at registration -----------------------------------------------------------

@@ -9,19 +9,31 @@ import { me } from "@/lib/i18n/me";
 import { fieldErrorsOf, rpcCode, rpcFailure } from "@/lib/rpc";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/action-state";
+import type { CheckInResult } from "@/features/reception/types";
 import { personalMinimumText, saleArguments, saleFieldsFrom } from "./sale";
 import {
   classTimeChangeSchema,
   endPauseSchema,
   pauseSchema,
   sellSchema,
+  sessionsChangeSchema,
 } from "./schemas";
 
-/** F-08: sell or renew a membership (BR-050 to BR-060, BR-092). */
+/** D-109: what S-03f [Produži članarinu] learns from the sale that checks the member in. */
+export type SaleCheckIn = {
+  checkIn: CheckInResult | null;
+  /** Why no visit was recorded: inside already, a later start, or no class today. */
+  notCheckedIn: "inside" | "not_today" | "no_class" | null;
+};
+
+/**
+ * F-08: sell or renew a membership (BR-050 to BR-060, BR-092). D-109: with `checkIn`
+ * (S-03f) the member is checked in with it in the same transaction.
+ */
 export async function sellMembership(
-  _state: ActionState,
+  _state: ActionState<SaleCheckIn>,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ActionState<SaleCheckIn>> {
   await requireStaff();
   const parsed = sellSchema.safeParse({
     ...saleFieldsFrom(formData),
@@ -29,11 +41,15 @@ export async function sellMembership(
   });
   if (!parsed.success)
     return { fieldErrors: fieldErrorsOf(parsed.error.issues) };
+  const checkIn = formData.get("checkIn") === "1";
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("sell_membership", {
+  const { data, error } = await supabase.rpc("sell_membership", {
     p_member: parsed.data.memberId,
     ...saleArguments(parsed.data),
+    ...(checkIn
+      ? { p_check_in: true, p_manual: formData.get("manual") === "1" }
+      : {}),
   });
   if (error) {
     const code = rpcCode(error);
@@ -54,7 +70,16 @@ export async function sellMembership(
 
   revalidatePath(`/members/${parsed.data.memberId}`);
   revalidatePath("/members");
-  return { success: me.memberships.saved };
+  if (!checkIn) return { success: me.memberships.saved };
+  const sale = data as {
+    check_in: CheckInResult | null;
+    not_checked_in: SaleCheckIn["notCheckedIn"];
+  };
+  revalidatePath("/reception");
+  return {
+    success: me.memberships.saved,
+    data: { checkIn: sale.check_in, notCheckedIn: sale.not_checked_in },
+  };
 }
 
 /**
@@ -145,6 +170,46 @@ export async function endMembershipPause(
   revalidatePath(`/members/${parsed.data.memberId}`);
   revalidatePath("/members");
   return { success: me.memberships.pauseEndSaved };
+}
+
+/**
+ * D-111 (BR-055a): S-07 [Izmijeni broj termina]. The owner and the admin set how many
+ * sessions of each limited type are left; added sessions first link the member's unpaid
+ * visits from the membership's days. The dates and the payment stay, so no shift is
+ * needed (BR-092). The RPC checks the role (P-24b).
+ */
+export async function changeSessions(
+  _state: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireStaff();
+  const parsed = sessionsChangeSchema.safeParse({
+    memberId: formData.get("memberId"),
+    membershipId: formData.get("membershipId"),
+    gymLeft: formData.get("gymLeft") ?? undefined,
+    groupLeft: formData.get("groupLeft") ?? undefined,
+    personalLeft: formData.get("personalLeft") ?? undefined,
+  });
+  if (!parsed.success)
+    return { fieldErrors: fieldErrorsOf(parsed.error.issues) };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_membership_sessions", {
+    p_membership: parsed.data.membershipId,
+    p_gym_left: parsed.data.gymLeft,
+    p_group_left: parsed.data.groupLeft,
+    p_personal_left: parsed.data.personalLeft,
+  });
+  if (error) return rpcFailure(error);
+
+  revalidatePath(`/members/${parsed.data.memberId}`);
+  revalidatePath("/members");
+  const linked = Number((data as { linked: number } | null)?.linked ?? 0);
+  return {
+    success: linked
+      ? me.memberships.sessionsSavedLinked.replace("{count}", String(linked))
+      : me.memberships.sessionsSaved,
+  };
 }
 
 export type MembershipPreview = {

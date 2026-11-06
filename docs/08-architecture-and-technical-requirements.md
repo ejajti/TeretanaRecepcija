@@ -147,6 +147,10 @@ RPCs raise `P0001` with the message `E_<CODE>`. `lib/errors.ts` maps each code t
 | E_PAUSE_TOO_LONG | `Članarina se može pauzirati najviše 7 dana ukupno.` (D-100) |
 | E_PAUSE_OVERLAP | `Članarina je u tom periodu već pauzirana.` (D-100) |
 | E_PAUSE_VISITED | `Član je danas već došao na ovu članarinu, pa pauza može početi najranije sjutra.` (D-100) |
+| E_VISIT_NOT_UNPAID_GYM | `Samo neplaćeni dolazak u teretanu može postati grupni trening.` (D-110) |
+| E_GROUP_VISIT_EXISTS | `Član tog dana već ima grupni trening.` (D-110) |
+| E_NO_GROUP_MEMBERSHIP | `Član tog dana nema Grupni sa slobodnim terminom.` (D-110) |
+| E_SESSIONS_INVALID | `Preostalo termina može biti od 0 do 99, a najmanje 1 dok nijedan termin nije iskorišten.` (D-111) |
 | E_RECORD_NOT_EDITABLE | `Ova stavka se ne može mijenjati (smjena je zaključena).` |
 | E_REASON_REQUIRED | `Unesite razlog (3–200 znakova).` |
 | E_STOCK_INSUFFICIENT | `Nema dovoljno na stanju (stanje: {qty}).` |

@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { saleFieldsSchema } from "@/features/memberships/schemas";
+import {
+  classTimeValue,
+  saleFieldsSchema,
+} from "@/features/memberships/schemas";
 import { parseDateInput } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
 import { phoneSchema } from "@/lib/phone";
@@ -80,4 +83,15 @@ export const replaceCardSchema = z.object({
   memberId: z.string().uuid(),
   cardCode: cardCodeSchema,
   method: z.enum(["cash", "card"], { message: me.memberships.methodRequired }),
+});
+
+/** D-110: S-07 [Ipak grupni trening]; the class is optional ("Bez časa iz rasporeda"). */
+export const visitToGroupSchema = z.object({
+  memberId: z.string().uuid(),
+  visitId: z.string().uuid(),
+  trainerId: z.string().uuid({ message: me.errors.E_TRAINER_REQUIRED }),
+  classTime: z.preprocess(
+    (value) => (value === "" ? null : value),
+    classTimeValue.nullable(),
+  ),
 });

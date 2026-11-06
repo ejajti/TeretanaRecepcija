@@ -49,6 +49,29 @@ export type CheckInOptions = {
   fallback_group_trainer: string | null;
 };
 
+/**
+ * D-109: S-03f's question, with nothing recorded yet. `reason` says whether the
+ * membership that ended last has expired, a valid one has no session left of the type,
+ * or no membership has ever run; `renewal` is what S-08 preselects.
+ */
+export type RenewQuestion = {
+  result: "renew";
+  member: MemberBrief;
+  manual: boolean;
+  reason: "expired" | "used_up" | "none";
+  plan_name: string | null;
+  end_date: string | null;
+  /** The unlinked unpaid visits the member already has. */
+  unpaid_count: number;
+  renewal: {
+    plan_id: string;
+    trainer_id: string | null;
+    class_time: string | null;
+  } | null;
+  trainer_defaults: CheckInResult["trainer_defaults"];
+  pause_ended?: boolean;
+};
+
 /** BR-070: every answer a scan (or a manual start) can give. */
 export type ScanOutcome =
   | { result: "invalid" | "unknown" | "deactivated" }
@@ -73,7 +96,8 @@ export type ScanOutcome =
       manual: boolean;
       options: CheckInOptions;
       pause_ended?: boolean;
-    };
+    }
+  | RenewQuestion;
 
 export type InGymRow = {
   visit_id: string;

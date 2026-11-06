@@ -137,6 +137,39 @@ describe("auditChanges (N-21)", () => {
     expect(auditSubject(moved, lookups)).toBe("Mjesečna – #12 Marko Marković");
   });
 
+  it("shows a visit turned into a group visit by its type and trainer (D-110)", () => {
+    const visit = {
+      member_id: "m1",
+      checked_in_at: "2026-10-16T10:42:31+00:00",
+      is_unpaid: true,
+    };
+    const turned = row(
+      "visits",
+      "update",
+      {
+        ...visit,
+        visit_type: "gym",
+        trainer_id: null,
+        class_slot_id: null,
+        membership_id: null,
+      },
+      {
+        ...visit,
+        visit_type: "group",
+        trainer_id: "t1",
+        class_slot_id: "cs1",
+        membership_id: "ms1",
+      },
+    );
+    expect(lines(turned)).toEqual([
+      "Vrsta dolaska: Teretana → Grupni",
+      "Trener: — → Tamara",
+    ]);
+    expect(auditSubject(turned, lookups)).toBe(
+      "#12 Marko Marković – 16.10.2026 12:42",
+    );
+  });
+
   it("reads plan kinds, percentages, units, times, lists and the logo", () => {
     expect(
       lines(

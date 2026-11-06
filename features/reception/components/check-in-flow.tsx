@@ -23,17 +23,19 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import type { SaleCheckIn } from "@/features/memberships/actions";
 import type { SaleCatalog } from "@/features/memberships/catalog";
 import { SellDialog } from "@/features/memberships/components/sell-dialog";
 import { formatDate, formatDuration } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
 import { playSound } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
-import { checkIn, checkOut } from "../actions";
+import { checkIn, checkInUnpaid, checkOut } from "../actions";
 import type {
   CheckInOptions,
   CheckInResult,
   MemberBrief,
+  RenewQuestion,
   ScanOutcome,
   VisitType,
 } from "../types";
@@ -46,6 +48,7 @@ type FlowState =
       manual: boolean;
       options: CheckInOptions;
     }
+  | { kind: "renew"; question: RenewQuestion }
   | { kind: "result"; result: CheckInResult }
   | { kind: "confirm"; visitId: string; member: MemberBrief; seconds: number };
 
@@ -53,13 +56,13 @@ const fullName = (member: MemberBrief) =>
   `${member.first_name} ${member.last_name}`;
 
 /**
- * The check-in and check-out dialogs of S-03 (S-03a to S-03e), shared by reception, the
+ * The check-in and check-out dialogs of S-03 (S-03a to S-03f), shared by reception, the
  * member list (after "Prijavi odmah") and the profile ([Ručna prijava]).
  *
  * `handle` takes whatever a scan or a manual start answered and shows the right thing.
  * It returns false for the card messages (BR-070) that reception shows in its status
- * area instead of a dialog. `scanBlocked` is true while S-03a or S-03e waits for a
- * decision, when a scan must not act behind the dialog.
+ * area instead of a dialog. `scanBlocked` is true while S-03a, S-03e or S-03f waits for
+ * a decision, when a scan must not act behind the dialog.
  */
 export function useCheckInFlow({
   catalog,
@@ -72,6 +75,8 @@ export function useCheckInFlow({
   const [selling, setSelling] = useState<{
     memberId: string;
     defaults: CheckInResult["trainer_defaults"];
+    /** D-109: from S-03f, which [Otkaži] on S-08 returns to. */
+    renew?: RenewQuestion;
   } | null>(null);
   const toast = useToast();
 
@@ -79,7 +84,9 @@ export function useCheckInFlow({
     (outcome: ScanOutcome): boolean => {
       // D-100 (BR-056): coming in ended the member's pause; the desk is told.
       if (
-        (outcome.result === "checked_in" || outcome.result === "choose") &&
+        (outcome.result === "checked_in" ||
+          outcome.result === "choose" ||
+          outcome.result === "renew") &&
         outcome.pause_ended
       )
         toast({ tone: "success", message: me.memberships.pauseEndedByVisit });
@@ -105,6 +112,11 @@ export function useCheckInFlow({
             manual: outcome.manual,
             options: outcome.options,
           });
+          return true;
+        case "renew":
+          // D-109: S-03f, with the sound the unpaid visit would bring (BR-079).
+          playSound(outcome.unpaid_count >= 1 ? "alarm" : "warning");
+          setState({ kind: "renew", question: outcome });
           return true;
         case "confirm_checkout":
           setState({
@@ -136,6 +148,50 @@ export function useCheckInFlow({
 
   const close = useCallback(() => setState(null), []);
 
+  // D-109: [Neplaćeni dolazak] needs no second dialog, S-03f has already warned.
+  const recordedUnpaid = useCallback(
+    (outcome: ScanOutcome) => {
+      if (outcome.result === "checked_in" && !outcome.check_in.covered) {
+        setState(null);
+        toast({
+          tone: "error",
+          message: me.reception.unpaidRecorded.replace(
+            "{name}",
+            fullName(outcome.check_in.member),
+          ),
+        });
+        onChanged();
+        return;
+      }
+      handle(outcome);
+    },
+    [handle, onChanged, toast],
+  );
+
+  // D-109: the sale from S-03f checked the member in, or says why it did not.
+  const sold = useCallback(
+    (sale: SaleCheckIn) => {
+      setSelling(null);
+      onChanged();
+      if (sale.checkIn) {
+        handle({ result: "checked_in", check_in: sale.checkIn });
+        return;
+      }
+      toast({
+        tone: "error",
+        message:
+          sale.notCheckedIn === "inside"
+            ? me.errors.E_MEMBER_HAS_OPEN_VISIT
+            : sale.notCheckedIn === "no_class"
+              ? me.members.notCheckedInNoClass
+              : me.members.checkInNotToday,
+      });
+    },
+    [handle, onChanged, toast],
+  );
+
+  const renewal = selling?.renew?.renewal ?? null;
+
   const element: ReactNode = (
     <>
       {state?.kind === "choose" ? (
@@ -146,6 +202,32 @@ export function useCheckInFlow({
           options={state.options}
           onCancel={close}
           onDone={handle}
+        />
+      ) : null}
+      {state?.kind === "renew" ? (
+        <RenewDialog
+          key={state.question.member.id}
+          question={state.question}
+          onCancel={() => {
+            // D-109: nothing was recorded, so the member scans again.
+            toast({
+              tone: "error",
+              message: me.reception.notCheckedIn.replace(
+                "{name}",
+                fullName(state.question.member),
+              ),
+            });
+            close();
+          }}
+          onRenew={() => {
+            setSelling({
+              memberId: state.question.member.id,
+              defaults: state.question.trainer_defaults,
+              renew: state.question,
+            });
+            close();
+          }}
+          onUnpaid={recordedUnpaid}
         />
       ) : null}
       {state?.kind === "confirm" ? (
@@ -171,21 +253,32 @@ export function useCheckInFlow({
           }}
         />
       ) : null}
-      {/* US-04.4 AC2: [Produži članarinu] opens S-08 for that member. */}
+      {/* US-04.4 AC2: [Produži članarinu] opens S-08 for that member; from S-03f
+          (D-109) with the membership to renew preselected, checking the member in. */}
       <SellDialog
         open={selling !== null}
         onOpenChange={(open) => {
           if (!open) {
+            const question = selling?.renew;
             setSelling(null);
             onChanged();
+            if (question) setState({ kind: "renew", question });
           }
         }}
         memberId={selling?.memberId ?? ""}
         catalog={catalog}
+        defaultPlanId={renewal?.plan_id}
         trainerDefaults={{
           group: selling?.defaults.group ?? undefined,
           personal: selling?.defaults.personal ?? undefined,
         }}
+        classTimeDefaults={
+          renewal?.trainer_id && renewal.class_time
+            ? { [renewal.trainer_id]: renewal.class_time }
+            : undefined
+        }
+        checkIn={selling?.renew ? { manual: selling.renew.manual } : undefined}
+        onSold={selling?.renew ? sold : undefined}
       />
     </>
   );
@@ -194,7 +287,10 @@ export function useCheckInFlow({
     handle,
     element,
     scanBlocked:
-      state?.kind === "choose" || state?.kind === "confirm" || selling !== null,
+      state?.kind === "choose" ||
+      state?.kind === "confirm" ||
+      state?.kind === "renew" ||
+      selling !== null,
   };
 }
 
@@ -438,6 +534,133 @@ function VisitTypeDialog({
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * S-03f (D-109): an expired or used-up membership. Nothing is recorded until the desk
+ * chooses: [Produži članarinu] sells and checks in, [Neplaćeni dolazak] records the
+ * unpaid visit, [Otkaži] (or Esc) records nothing. Yellow, or full-screen red when the
+ * member already has an unpaid visit, as the visit would be (BR-079).
+ */
+function RenewDialog({
+  question,
+  onCancel,
+  onRenew,
+  onUnpaid,
+}: {
+  question: RenewQuestion;
+  onCancel: () => void;
+  onRenew: () => void;
+  onUnpaid: (outcome: ScanOutcome) => void;
+}) {
+  const [pending, run] = useRunner();
+  const red = question.unpaid_count >= 1;
+  const plan = question.plan_name ?? "";
+  const reason =
+    question.reason === "expired"
+      ? me.reception.renewExpired
+          .replace("{plan}", plan)
+          .replace(
+            "{date}",
+            question.end_date ? formatDate(question.end_date) : "",
+          )
+      : question.reason === "used_up"
+        ? me.reception.renewUsedUp.replace("{plan}", plan)
+        : me.reception.renewNone;
+  return (
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent
+        data-result={red ? "renew-red" : "renew-yellow"}
+        className={cn(
+          red
+            ? "top-0 left-0 flex h-svh w-screen max-w-none translate-x-0 translate-y-0 flex-col items-center justify-center gap-8 rounded-none border-0 bg-danger text-center text-white"
+            : "border-4 border-amber-500 bg-amber-50",
+        )}
+      >
+        <DialogHeader className={cn(red && "items-center")}>
+          <DialogTitle
+            className={cn("flex items-center gap-2", red && "text-2xl")}
+          >
+            {red ? (
+              <CircleAlert aria-hidden="true" className="size-8" />
+            ) : (
+              <TriangleAlert
+                aria-hidden="true"
+                className="size-6 text-amber-700"
+              />
+            )}
+            {`${fullName(question.member)} (#${question.member.member_number})`}
+          </DialogTitle>
+          <DialogDescription
+            className={cn(
+              "grid gap-2",
+              red
+                ? "text-xl font-medium text-white"
+                : "text-base font-medium text-foreground",
+            )}
+          >
+            <span>{reason}</span>
+            {red ? (
+              <span className="text-5xl leading-tight font-bold">
+                {me.reception.renewUnpaid.replace(
+                  "{count}",
+                  String(question.unpaid_count),
+                )}
+              </span>
+            ) : null}
+            <span>{me.reception.renewQuestion}</span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className={cn(red && "gap-4 sm:justify-center")}>
+          <Button
+            type="button"
+            autoFocus
+            variant={red ? "outline" : "default"}
+            className={cn(
+              red && "h-14 border-white bg-white px-8 text-lg text-danger",
+            )}
+            disabled={pending}
+            onClick={onRenew}
+          >
+            {me.reception.renew}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              red &&
+                "h-14 border-white bg-transparent px-8 text-lg text-white hover:bg-white/10",
+            )}
+            disabled={pending}
+            onClick={() =>
+              run(
+                () => checkInUnpaid(question.member.id, question.manual),
+                onUnpaid,
+              )
+            }
+          >
+            {pending ? (
+              <Loader2 aria-hidden="true" className="animate-spin" />
+            ) : null}
+            {me.reception.unpaidVisit}
+          </Button>
+          <DialogClose asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className={cn(
+                red &&
+                  "h-14 px-8 text-lg text-white hover:bg-white/10 hover:text-white",
+              )}
+              disabled={pending}
+            >
+              {me.common.cancel}
+            </Button>
+          </DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

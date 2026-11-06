@@ -84,6 +84,19 @@ export async function checkIn(input: {
   };
 }
 
+/** D-109: S-03f [Neplaćeni dolazak] records the visit the scan held back. */
+export async function checkInUnpaid(
+  memberId: string,
+  manual: boolean,
+): Promise<Answer<ScanOutcome>> {
+  if (!uuid.safeParse(memberId).success)
+    return { ok: false, error: getErrorMessage("E_VALIDATION") };
+  return call<ScanOutcome>("check_in_unpaid", {
+    p_member: memberId,
+    p_manual: manual,
+  });
+}
+
 /** BR-072 and BR-080: [Odjavi], or S-03e's confirmation. */
 export async function checkOut(
   visitId: string,

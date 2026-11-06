@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { me } from "@/lib/i18n/me";
-import { sellMembership } from "../actions";
+import { sellMembership, type SaleCheckIn } from "../actions";
 import type { SaleCatalog } from "../catalog";
 import {
   MembershipFields,
@@ -28,6 +28,10 @@ import {
  * S-08, opened from the profile ([Nova članarina], or [Produži] with the same plan,
  * trainer and fixed class time preselected, US-08.2 and D-71). [Naplati i sačuvaj] is a
  * money action (BR-092).
+ *
+ * D-109: from S-03f, `checkIn` has the sale check the member in as well, and `onSold`
+ * receives the visit instead of `onOpenChange(false)`, so the caller can tell a sale
+ * from a cancel.
  */
 export function SellDialog({
   open,
@@ -37,6 +41,8 @@ export function SellDialog({
   defaultPlanId,
   trainerDefaults,
   classTimeDefaults,
+  checkIn,
+  onSold,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,6 +51,8 @@ export function SellDialog({
   defaultPlanId?: string;
   trainerDefaults?: TrainerDefaults;
   classTimeDefaults?: ClassTimeDefaults;
+  checkIn?: { manual: boolean };
+  onSold?: (sale: SaleCheckIn) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,7 +71,10 @@ export function SellDialog({
             defaultPlanId={defaultPlanId}
             trainerDefaults={trainerDefaults}
             classTimeDefaults={classTimeDefaults}
-            onDone={() => onOpenChange(false)}
+            checkIn={checkIn}
+            onDone={(sale) =>
+              sale && onSold ? onSold(sale) : onOpenChange(false)
+            }
           />
         ) : null}
       </DialogContent>
@@ -77,6 +88,7 @@ function SellForm({
   defaultPlanId,
   trainerDefaults,
   classTimeDefaults,
+  checkIn,
   onDone,
 }: {
   memberId: string;
@@ -84,15 +96,26 @@ function SellForm({
   defaultPlanId?: string;
   trainerDefaults?: TrainerDefaults;
   classTimeDefaults?: ClassTimeDefaults;
-  onDone: () => void;
+  checkIn?: { manual: boolean };
+  onDone: (sale: SaleCheckIn | undefined) => void;
 }) {
   const [state, onSubmit, pending] = useFormAction(sellMembership);
-  const close = useCallback(() => onDone(), [onDone]);
+  const close = useCallback(() => onDone(state.data), [onDone, state.data]);
   useActionToast(state, close);
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4" noValidate>
       <input type="hidden" name="memberId" value={memberId} />
+      {checkIn ? (
+        <>
+          <input type="hidden" name="checkIn" value="1" />
+          <input
+            type="hidden"
+            name="manual"
+            value={checkIn.manual ? "1" : "0"}
+          />
+        </>
+      ) : null}
       <FormError>{state.error}</FormError>
       <MembershipFields
         idPrefix="sell"

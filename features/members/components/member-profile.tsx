@@ -12,6 +12,7 @@ import {
   Plus,
   ShieldOff,
   UserX,
+  Users,
 } from "lucide-react";
 import { MoneyButton } from "@/components/common/money-button";
 import { Button } from "@/components/ui/button";
@@ -30,10 +31,15 @@ import {
   type MembershipPause,
 } from "@/features/memberships/components/pause-dialog";
 import { SellDialog } from "@/features/memberships/components/sell-dialog";
+import { SessionsDialog } from "@/features/memberships/components/sessions-dialog";
+import {
+  limitedSessions,
+  type UnpaidVisit,
+} from "@/features/memberships/sessions";
 import { beginCheckIn, checkOut } from "@/features/reception/actions";
 import { useCheckInFlow } from "@/features/reception/components/check-in-flow";
 import { useToast } from "@/components/common/toast";
-import { formatDate, formatMoney, formatTime } from "@/lib/format";
+import { formatDate, formatMoney, formatTime, gymDateOf } from "@/lib/format";
 import { me } from "@/lib/i18n/me";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +47,10 @@ import {
   EditMemberDialog,
   LostCardDialog,
 } from "./member-dialogs";
+import {
+  VisitToGroupDialog,
+  type GroupCorrection,
+} from "./visit-to-group-dialog";
 
 export type ProfileTab = "clanarine" | "uplate" | "dolasci";
 
@@ -185,6 +195,53 @@ function classTimeChangeable(membership: ProfileMembership): boolean {
   );
 }
 
+/**
+ * D-110: an unlinked unpaid gym visit can become a group visit when a Grupni covered
+ * group training that day (dates, no pause, a session left: BR-053) and the member has
+ * no group visit that day yet. The earliest-ending such membership, as the database
+ * picks it (BR-074); the database checks it all again.
+ */
+function groupCorrectionFor(
+  visit: ProfileVisit,
+  visits: ProfileVisit[],
+  memberships: ProfileMembership[],
+): GroupCorrection | null {
+  if (visit.visit_type !== "gym" || !visit.is_unpaid) return null;
+  const day = gymDateOf(visit.checked_in_at);
+  if (
+    visits.some(
+      (other) =>
+        other.visit_type === "group" && gymDateOf(other.checked_in_at) === day,
+    )
+  )
+    return null;
+  const membership = memberships
+    .filter(
+      (candidate) =>
+        candidate.status !== "voided" &&
+        candidate.covers_group &&
+        candidate.start_date <= day &&
+        day <= candidate.end_date &&
+        (candidate.group_session_limit === null ||
+          candidate.group_used < candidate.group_session_limit) &&
+        !candidate.pauses.some(
+          (pause) => pause.paused_from <= day && day <= pause.paused_until,
+        ),
+    )
+    .sort((a, b) => a.end_date.localeCompare(b.end_date))[0];
+  return membership ? { visit, membership } : null;
+}
+
+/**
+ * D-111 (BR-055a): the owner and the admin change the sessions left of any membership
+ * that is not voided, expired ones too, when it has a type with a limit.
+ */
+function sessionsChangeable(membership: ProfileMembership): boolean {
+  return (
+    membership.status !== "voided" && limitedSessions(membership).length > 0
+  );
+}
+
 /** D-100 (BR-056): a pause can start while the membership still has days and pause left. */
 function pausable(membership: ProfileMembership, today: string): boolean {
   return (
@@ -221,10 +278,13 @@ export function MemberProfile({
   tab,
   catalog,
   today,
+  unpaidVisits,
 }: {
   member: Member;
   cardCode: string | null;
   unpaidCount: number;
+  /** D-111: the unlinked unpaid visits, for the owner's [Izmijeni broj termina] preview. */
+  unpaidVisits: UnpaidVisit[];
   /** BR-071: the member's open visit, if they are in the gym. */
   openVisitId: string | null;
   memberships: ProfileMembership[];
@@ -245,6 +305,9 @@ export function MemberProfile({
   const [changingClassTime, setChangingClassTime] =
     useState<ProfileMembership | null>(null);
   const [pausing, setPausing] = useState<ProfileMembership | null>(null);
+  const [changingSessions, setChangingSessions] =
+    useState<ProfileMembership | null>(null);
+  const [toGroup, setToGroup] = useState<GroupCorrection | null>(null);
   const [endingPause, setEndingPause] = useState<{
     membership: ProfileMembership;
     pause: MembershipPause;
@@ -510,6 +573,20 @@ export function MemberProfile({
                             </Button>
                           ) : null;
                         })()}
+                        {/* D-111: owner and admin only; the dates do not change. */}
+                        {catalog.isOwner &&
+                        sessionsChangeable(membership) &&
+                        !readOnly ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            aria-label={`${me.memberships.editSessions} ${membership.plan_name}`}
+                            onClick={() => setChangingSessions(membership)}
+                          >
+                            {me.memberships.editSessions}
+                          </Button>
+                        ) : null}
                         {/* US-08.2: [Produži] on every membership that is not voided. */}
                         {membership.status !== "voided" && !readOnly ? (
                           <MoneyButton
@@ -620,30 +697,48 @@ export function MemberProfile({
                     </Td>
                   </tr>
                 ) : (
-                  visits.map((visit) => (
-                    <tr key={visit.id}>
-                      <Td>{formatDate(visit.checked_in_at)}</Td>
-                      <Td>{formatTime(visit.checked_in_at)}</Td>
-                      <Td>
-                        {visit.checked_out_at
-                          ? formatTime(visit.checked_out_at)
-                          : "—"}
-                      </Td>
-                      <Td>{me.visitTypes[visit.visit_type]}</Td>
-                      <Td>{visit.trainer_name ?? "—"}</Td>
-                      <Td>
-                        {visit.is_unpaid ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-danger px-2 py-0.5 text-xs font-medium text-danger">
-                            <CircleAlert
-                              aria-hidden="true"
-                              className="size-3"
-                            />
-                            {me.members.unpaid}
-                          </span>
-                        ) : null}
-                      </Td>
-                    </tr>
-                  ))
+                  visits.map((visit) => {
+                    const correction = readOnly
+                      ? null
+                      : groupCorrectionFor(visit, visits, memberships);
+                    return (
+                      <tr key={visit.id}>
+                        <Td>{formatDate(visit.checked_in_at)}</Td>
+                        <Td>{formatTime(visit.checked_in_at)}</Td>
+                        <Td>
+                          {visit.checked_out_at
+                            ? formatTime(visit.checked_out_at)
+                            : "—"}
+                        </Td>
+                        <Td>{me.visitTypes[visit.visit_type]}</Td>
+                        <Td>{visit.trainer_name ?? "—"}</Td>
+                        <Td>
+                          {visit.is_unpaid ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-danger px-2 py-0.5 text-xs font-medium text-danger">
+                              <CircleAlert
+                                aria-hidden="true"
+                                className="size-3"
+                              />
+                              {me.members.unpaid}
+                            </span>
+                          ) : null}
+                          {/* D-110: the trainer held the class at another time. */}
+                          {correction ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="ml-2"
+                              onClick={() => setToGroup(correction)}
+                            >
+                              <Users aria-hidden="true" />
+                              {me.members.toGroup}
+                            </Button>
+                          ) : null}
+                        </Td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </Table>
@@ -726,6 +821,22 @@ export function MemberProfile({
         memberId={member.id}
         membership={pausing}
         today={today}
+      />
+      {catalog.isOwner ? (
+        <SessionsDialog
+          open={changingSessions !== null}
+          onOpenChange={(open) => !open && setChangingSessions(null)}
+          memberId={member.id}
+          membership={changingSessions}
+          unpaidVisits={unpaidVisits}
+        />
+      ) : null}
+      <VisitToGroupDialog
+        open={toGroup !== null}
+        onOpenChange={(open) => !open && setToGroup(null)}
+        memberId={member.id}
+        correction={toGroup}
+        catalog={catalog}
       />
       <EndPauseDialog
         open={endingPause !== null}

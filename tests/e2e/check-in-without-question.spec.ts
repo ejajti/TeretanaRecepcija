@@ -365,6 +365,37 @@ test("D-102: outside their class it is an unpaid gym visit with the yellow dialo
   ]);
 });
 
+test("D-110: [Ipak grupni trening] makes that visit the group visit it was", async ({
+  page,
+}) => {
+  // The trainer held the class at another time that day; the desk corrects the visit.
+  await openReception(page);
+  await page.goto(`/members/${members.outside}?tab=dolasci`);
+  await expect(page.getByText("Neplaćeni dolasci: 1")).toBeVisible();
+  await page.getByRole("button", { name: "Ipak grupni trening" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Trener", { exact: true })).toHaveValue(
+    trainerId,
+  );
+  await expect(dialog.getByLabel("Čas", { exact: true })).toHaveValue("");
+  await dialog.getByRole("button", { name: "Sačuvaj" }).click();
+  await expect(
+    page.getByText("Dolazak je upisan kao grupni trening."),
+  ).toBeVisible();
+  await expect(page.getByText(/Neplaćeni dolasci:/)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Ipak grupni trening" }),
+  ).toHaveCount(0);
+  expect(await visitsOf(members.outside)).toEqual([
+    {
+      visit_type: "group",
+      trainer_id: trainerId,
+      class_slot_id: null,
+      is_unpaid: true,
+    },
+  ]);
+});
+
 test("D-102: G+T still asks the visit type, and Esc records nothing", async ({
   page,
 }) => {
