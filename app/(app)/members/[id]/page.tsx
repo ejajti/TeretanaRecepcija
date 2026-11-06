@@ -8,6 +8,7 @@ import {
   type ProfileVisit,
 } from "@/features/members/components/member-profile";
 import { loadSaleCatalog } from "@/features/memberships/catalog";
+import type { UnpaidVisit } from "@/features/memberships/sessions";
 import { requireStaff } from "@/lib/auth";
 import { gymToday } from "@/lib/gym-date";
 import { me } from "@/lib/i18n/me";
@@ -98,13 +99,16 @@ export default async function MemberPage({
             trainers: { full_name: string } | null;
           })[]
         >(),
-      // US-10.1: the unlinked unpaid visits (glossary, doc 02).
+      // US-10.1: the unlinked unpaid visits (glossary, doc 02). D-111: their days and
+      // types too, for what [Izmijeni broj termina] would link.
       supabase
         .from("visits")
-        .select("id", { count: "exact", head: true })
+        .select("checked_in_at, visit_type", { count: "exact" })
         .eq("member_id", id)
         .eq("is_unpaid", true)
-        .is("membership_id", null),
+        .is("membership_id", null)
+        .order("checked_in_at")
+        .returns<UnpaidVisit[]>(),
       // BR-071: the open visit, if any, decides [Ručna prijava] or [Ručna odjava].
       supabase
         .from("visits")
@@ -137,6 +141,7 @@ export default async function MemberPage({
       member={member}
       cardCode={card.data?.code ?? null}
       unpaidCount={unpaid.count ?? 0}
+      unpaidVisits={unpaid.data ?? []}
       openVisitId={openVisit.data?.id ?? null}
       memberships={(memberships.data ?? []) as ProfileMembership[]}
       payments={(payments.data ?? []).map(

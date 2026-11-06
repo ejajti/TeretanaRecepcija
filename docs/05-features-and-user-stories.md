@@ -71,9 +71,10 @@ All features are **MVP**. Acceptance criteria (AC) are written so each one can b
 - AC2: Enter confirms. Esc cancels, and nothing is saved.
 - AC3: When two memberships cover the type, a membership selector appears with the earliest-ending one preselected.
 
-**US-04.4** As a receptionist, I am clearly warned about unpaid visits (BR-079).
+**US-04.4** As a receptionist, I am clearly warned about unpaid visits (BR-079, BR-079a).
 - AC1: N = 1 shows the yellow dialog with the warning sound. N ≥ 2 shows the full-screen red dialog with the alarm sound.
 - AC2: [Produži članarinu] opens S-08 for that member.
+- AC3 (D-109): an expired or used-up membership opens S-03f and records nothing until I choose. [Produži članarinu] sells the membership and checks the member in with it in one transaction (green result); [Neplaćeni dolazak] records the unpaid visit; [Otkaži] records nothing and tells me the member must scan again.
 
 **US-04.5** As a receptionist, scanning the card again checks the member out (BR-072).
 - AC1: A toast shows the name and duration.
@@ -126,10 +127,22 @@ All features are **MVP**. Acceptance criteria (AC) are written so each one can b
 ## F-09 Membership status and session counting
 **US-09.1** Status and remaining sessions everywhere follow BR-053–055 and always reflect the latest data.
 
+**US-09.2** As the owner or the admin, I change how many sessions a member's membership has left, for example two more on a paid `Mjesečna 12 termina`, without changing its dates (BR-055a, D-111).
+- AC1: [Izmijeni broj termina] appears on S-07 on every membership that is not voided (expired ones too) and has a type with a limit, for the owner and the admin only (P-24b).
+- AC2: The dialog shows, per limited type, `Iskorišteno <n> od <limit>.` and the field `<Tip>: preostalo termina` filled with what is left; while I type it shows `Ukupno termina: <n>.`, and when sessions are added and the member has unpaid visits of that type from the membership's days, how many get linked and what is left after them.
+- AC3: [Sačuvaj] stores the new count. The dates, amount and payment do not change, and no open shift is needed. Linked visits are no longer counted by the badge or marked `Neplaćeno` (US-10.1).
+- AC4: Out of range (below 0, or 0 while none is used, or above 99) [Sačuvaj] stays disabled and the database refuses it too (`E_SESSIONS_INVALID`). A manager or receptionist does not see the button and the database refuses them (`E_FORBIDDEN`).
+- AC5: The audit log shows the old and new count and who changed it (BR-096).
+
 ## F-10 Unpaid visits and warnings
-Covered by US-04.4, BR-078 and BR-079.
+Covered by US-04.4, BR-078, BR-079 and BR-079a.
 
 **US-10.1** As staff, the profile shows the count of unlinked unpaid visits as a red badge `Neplaćeni dolasci: N`. In `Dolasci`, `Neplaćeno` marks the same unlinked visits; one a later sale linked (BR-052 step 2) is shown as an ordinary visit (D-106).
+
+**US-10.2** As staff, when a Grupni member was recorded with an unpaid gym visit but was at a group class after all (the trainer held it at another time), I turn that visit into the group visit it was (BR-079b, D-110).
+- AC1: [Ipak grupni trening] appears in `Dolasci` beside an unlinked unpaid gym visit only when a Grupni covered group training that day with a session left and the member has no group visit that day.
+- AC2: The dialog preselects the membership's trainer and `Bez časa iz rasporeda`; [Sačuvaj] records a group visit on that Grupni, uses one session, and the badge and `Neplaćeno` no longer count it.
+- AC3: The audit log shows the change and who made it.
 
 ## F-11 Lost card replacement
 **US-11.1** As staff, I replace a lost card (BR-034) via [Izgubljena kartica] on S-07.

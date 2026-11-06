@@ -535,7 +535,7 @@ test("E2E-02: a handover — A's shift is taken over by B, each keeps its own re
   await owner.context().close();
 });
 
-test("E2E-03: a lapsed member — two back-dated visits, a red third, renewal links all", async ({
+test("E2E-03: a lapsed member — two back-dated visits, a red S-03f, renewal links all", async ({
   page,
   browser,
 }) => {
@@ -556,15 +556,15 @@ test("E2E-03: a lapsed member — two back-dated visits, a red third, renewal li
   }
   await owner.context().close();
 
-  // 2. Today's scan is the third unpaid visit: red.
+  // 2. Today's scan asks first (D-109, S-03f): red, with two unpaid visits already.
   await signIn(page, staff.bojana);
   await startWork(page);
   await scan(page, card.bozo);
-  const red = page.locator("[data-result=red]");
+  const red = page.locator("[data-result=renew-red]");
   await expect(red).toBeVisible();
-  await expect(red).toContainText("PAŽNJA: 3. neplaćeni dolazak!");
+  await expect(red).toContainText("PAŽNJA: neplaćeni dolasci: 2");
 
-  // 3. [Produži članarinu] from the red screen, Mjesečna, cash.
+  // 3. [Produži članarinu] from the red screen, Mjesečna, cash; the sale checks in.
   await red.getByRole("button", { name: "Produži članarinu" }).click();
   const sell = page.getByRole("dialog");
   await sell.getByLabel("Vrsta članarine").selectOption(plan.mjesecna);
@@ -576,8 +576,10 @@ test("E2E-03: a lapsed member — two back-dated visits, a red third, renewal li
   await sell.getByText("Gotovina", { exact: true }).click();
   await sell.getByRole("button", { name: "Naplati i sačuvaj" }).click();
   await expect(page.getByText("Članarina sačuvana.").first()).toBeVisible();
+  await expect(page.locator("[data-result=covered]")).toBeVisible();
 
-  // 4. The profile: no badge, all three visits linked, the start at the first one.
+  // 4. The profile: no badge, both unpaid visits and today's on the membership, the
+  // start at the first one.
   const admin = adminClient();
   const { data: membership } = await admin
     .from("memberships")

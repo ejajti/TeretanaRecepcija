@@ -4544,6 +4544,25 @@ red; aplikacija koja je radila za vrijeme izmjene čita ista polja kao prije.
 | E2E `finance.spec.ts` Flow 9 (desktop i mobilni), `test-plan-high-f.spec.ts` FIN-11 sa „the desk's day“ (desktop), `screens.spec.ts` S-18 (desktop i mobilni) | **6 prošlo**, 2 preskočena (FIN-11 radi samo na desktopu). Svaki test pravi svoju E2E teretanu i briše je; poslije je u bazi samo KP Fitness |
 | Ostali E2E | po zahtjevu nisu pokretani (samo testovi za S-18) |
 
+### 9.29 Dopuna — vlasnik mijenja broj preostalih termina (D-111), 04.11.2026
+
+**D-111 (zahtjev 04.11.2026):** na kartici člana (S-07) vlasnik i admin imaju
+**[Izmijeni broj termina]** na svakoj članarini koja nije poništena (i na isteklim) i ima vrstu sa
+ograničenim brojem termina. Upisuje se koliko termina ostaje (0–99, najmanje 1 dok nijedan nije
+iskorišten); datumi, iznos i uplata se ne mijenjaju. Kad se termini dodaju, neplaćeni dolasci te
+vrste iz perioda članarine se prvo povezuju s njom, od najstarijeg. Menadžer i recepcioner nemaju
+dugme, a baza ih odbija. Migracija 0064 (`set_membership_sessions`).
+
+Pravila: BR-055a (doc 03), P-24b (doc 04), US-09.2 (doc 05), S-07 (doc 06).
+
+| Provjera 04.11.2026 | Rezultat |
+|---|---|
+| 0062, 0063, 0064 i novi pgTAP `0042_membership_sessions` u transakciji koja se poništava (produkcija) | **29/29** |
+| Ostalih 42 pgTAP fajla sa funkcijama iz 0062–0064 (bez promjene ograničenja tabele, da se `memberships` ne zaključava u radno vrijeme), poništeno | **42/42** |
+| Postojeće članarine na produkciji i novo ograničenje (svi limiti ≥ 1) | 0 od 214 ga krši (read-only provjera) |
+| `npm run lint`, `npm run typecheck`, unit (`tests/unit`) | PROŠLO |
+| E2E `membership-sessions.spec.ts` | napisan, nije pokrenut (`.env.local` pokazuje na produkciju) |
+
 *Kraj plana. Novi rezultati upisani su uz slučajeve; neoznačeni kvadratići nisu automatski prolaz.*
 
 

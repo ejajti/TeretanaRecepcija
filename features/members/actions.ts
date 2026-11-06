@@ -20,6 +20,7 @@ import {
   registerSchema,
   replaceCardSchema,
   updateMemberSchema,
+  visitToGroupSchema,
 } from "./schemas";
 
 /**
@@ -269,4 +270,41 @@ export async function replaceCard(
 
   revalidatePath(`/members/${parsed.data.memberId}`);
   return { success: me.members.lostCardDone };
+}
+
+/**
+ * D-110: S-07 [Ipak grupni trening]. Any role turns an unpaid gym visit into the group
+ * visit it was; the database checks the day's membership and audits it (BR-096). No
+ * money changes hands, so no shift is needed (BR-092).
+ */
+export async function visitToGroup(
+  _state: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireStaff();
+  const parsed = visitToGroupSchema.safeParse({
+    memberId: formData.get("memberId"),
+    visitId: formData.get("visitId"),
+    trainerId: formData.get("trainerId") ?? "",
+    classTime: formData.get("classTime") ?? "",
+  });
+  if (!parsed.success)
+    return { fieldErrors: fieldErrorsOf(parsed.error.issues) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("visit_to_group", {
+    p_visit: parsed.data.visitId,
+    p_trainer: parsed.data.trainerId,
+    p_class_time: parsed.data.classTime,
+  });
+  if (error) {
+    const code = rpcCode(error);
+    if (code.startsWith("E_TRAINER_"))
+      return { fieldErrors: { trainerId: getErrorMessage(code) } };
+    return rpcFailure(error);
+  }
+
+  revalidatePath(`/members/${parsed.data.memberId}`);
+  revalidatePath("/members");
+  return { success: me.members.toGroupSaved };
 }

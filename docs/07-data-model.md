@@ -238,7 +238,7 @@ create table memberships (
   covers_personal        boolean not null,
   gym_visit_limit        smallint,
   group_session_limit    smallint,
-  personal_session_limit smallint check (personal_session_limit between 1 and 50),
+  personal_session_limit smallint,                         -- a sale enters 1–50 (BR-059)
   is_backdated           boolean not null default false,
   created_by             uuid not null references staff(id),
   shift_id               uuid references shifts(id),
@@ -249,7 +249,10 @@ create table memberships (
   check (end_date >= start_date),
   check (is_backdated = (shift_id is null)),
   check ((voided_at is null) = (void_reason is null)),
-  check (class_time is null or (covers_group and trainer_id is not null))  -- D-71
+  check (class_time is null or (covers_group and trainer_id is not null)),  -- D-71
+  -- D-111 (migration 0064): never fewer than 1 session; replaces the 1–50 check on
+  -- personal_session_limit, so BR-055a may give a Personalni more than a sale does.
+  check (gym_visit_limit >= 1 and group_session_limit >= 1 and personal_session_limit >= 1)
 );
 create index memberships_member_idx on memberships (member_id, end_date desc);
 
@@ -535,15 +538,18 @@ All RPCs are `security definer`. Each one:
 | `take_over_shift(p_counted_cash numeric)` | receptionist | BR-111 |
 | `close_shift(p_shift uuid, p_counted_cash numeric)` → shift | receptionist (own), owner (any; cash optional) | BR-114, BR-115 |
 | `shift_summary(p_shift uuid)` → json | shift's receptionist, owner; manager: currently open shift only, aggregate totals only | BR-115, BR-117, D-54 |
-| `scan_card(p_code text)` → json `{result, member, open_visit, options, candidates, unpaid_count}` | all | BR-070–073 (check-out happens inside, unless the guard applies), BR-072a |
+| `scan_card(p_code text)` → json `{result, member, open_visit, options, candidates, unpaid_count}` | all | BR-070–073 (check-out happens inside, unless the guard applies), BR-072a; `result = 'renew'` (D-109, BR-079a) records nothing and carries `reason`, `plan_name`, `end_date`, `unpaid_count` and the `renewal` S-08 preselects; `begin_check_in` answers the same |
+| `check_in_unpaid(p_member uuid, p_manual bool)` → json | all | BR-079a [Neplaćeni dolazak] (D-109): the visit BR-073 decides, unpaid |
+| `visit_to_group(p_visit uuid, p_trainer uuid, p_class_time time)` → json `{visit_id, membership_id, unpaid_count}` | all | BR-079b (D-110); audited (BR-096) |
 | `check_in(p_member uuid, p_type visit_type, p_membership uuid, p_trainer uuid, p_slot uuid, p_manual bool)` → json | all | BR-071–079 |
 | `check_out(p_visit uuid, p_confirmed bool)` → json | all | BR-072, BR-072a |
 | `register_member(p_card_code, p_first, p_last, p_phone, p_email, p_dob, p_plan, p_trainer, p_amount, p_sessions, p_method, p_check_in bool, p_class_time time default null, p_start_override date default null)` → json | all (`p_start_override` too, N-31, D-97); `p_gym_fee numeric default null` last (D-99): for Personalni the required fixed part and the amount, with `p_amount` null or equal (D-101) | BR-033, BR-040–043, BR-050–060, BR-058a |
 | `find_duplicates(p_phone, p_email)` → rows | all | BR-043 |
 | `update_member(p_member, …)` | all | BR-045 |
 | `anonymize_member(p_member)` | owner | BR-046 |
-| `sell_membership(p_member, p_plan, p_trainer, p_amount, p_sessions, p_method, p_start_override date default null, p_class_time time default null)` | all (override too, D-97); `p_gym_fee numeric default null` last (D-99): for Personalni the required fixed part and the amount, with `p_amount` null or equal (D-101) | BR-050–060, BR-058a, BR-092 |
+| `sell_membership(p_member, p_plan, p_trainer, p_amount, p_sessions, p_method, p_start_override date default null, p_class_time time default null)` | all (override too, D-97); `p_gym_fee numeric default null` (D-99): for Personalni the required fixed part and the amount, with `p_amount` null or equal (D-101); then `p_check_in bool default false, p_manual bool default false` (D-109): S-03f's sale also checks the member in, answering `check_in` or `not_checked_in` (`inside`, `not_today`, `no_class`) | BR-050–060, BR-058a, BR-092, BR-079a |
 | `set_membership_class_time(p_membership uuid, p_class_time time)` → membership | all | BR-058a (D-71) |
+| `set_membership_sessions(p_membership uuid, p_gym_left int default null, p_group_left int default null, p_personal_left int default null)` → json `{membership_id, linked, unpaid_count}` | owner, admin | BR-055a (D-111, migration 0064): each non-null argument is the sessions left of that limited type; the limit becomes used + left; added sessions link the member's unpaid visits of that type from the membership's days, oldest first; audited by the memberships trigger (BR-096) |
 | `pause_membership(p_membership uuid, p_from date, p_days int)` → membership_pauses | all | BR-056 (D-100) |
 | `end_membership_pause(p_pause uuid)` → membership_pauses | all | BR-056 (D-100); a check-in (`start_check_in`, `check_in`) ends a running pause the same way and answers `pause_ended` |
 | `sell_day_passes(p_qty, p_method)` | all | BR-100 |

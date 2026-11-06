@@ -150,6 +150,34 @@ export const pauseSchema = z.object({
     .max(7, me.memberships.pauseDaysInvalid.replace("{max}", "7")),
 });
 
+/** D-111 (BR-055a): one type's sessions left, 0 to 99; empty means unchanged. */
+const sessionsLeftValue = z.preprocess(
+  emptyToNull,
+  z.coerce
+    .number({ message: me.errors.E_SESSIONS_INVALID })
+    .int(me.errors.E_SESSIONS_INVALID)
+    .min(0, me.errors.E_SESSIONS_INVALID)
+    .max(99, me.errors.E_SESSIONS_INVALID)
+    .nullable(),
+);
+
+/** D-111 (BR-055a): S-07 [Izmijeni broj termina]; the RPC checks each type and the role. */
+export const sessionsChangeSchema = z
+  .object({
+    memberId: z.string().uuid(),
+    membershipId: z.string().uuid(),
+    gymLeft: sessionsLeftValue.optional().transform((v) => v ?? null),
+    groupLeft: sessionsLeftValue.optional().transform((v) => v ?? null),
+    personalLeft: sessionsLeftValue.optional().transform((v) => v ?? null),
+  })
+  .refine(
+    (value) =>
+      value.gymLeft !== null ||
+      value.groupLeft !== null ||
+      value.personalLeft !== null,
+    { message: me.errors.E_VALIDATION },
+  );
+
 /** D-100: S-07 [Prekini pauzu]. */
 export const endPauseSchema = z.object({
   memberId: z.string().uuid(),

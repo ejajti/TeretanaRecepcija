@@ -12,7 +12,10 @@ import type { ActionState } from "@/lib/action-state";
  * written from its own effect, so a caller that passes an inline arrow does not make
  * the toast fire again on every render.
  */
-export function useActionToast(state: ActionState, onSuccess?: () => void) {
+export function useActionToast<T>(
+  state: ActionState<T>,
+  onSuccess?: () => void,
+) {
   const toast = useToast();
   const handleSuccess = useRef(onSuccess);
 

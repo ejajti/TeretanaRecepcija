@@ -1,11 +1,12 @@
 -- D-102 (BR-073): S-03a asks the visit type only when the memberships valid today cover
 -- two or more types. Grupni only checks in to the member's own class (D-71, ±90 min) or,
 -- outside it, as an unpaid gym visit; Personalni only checks in with its trainer; used-up
--- sessions give the unpaid (yellow or red) result; two gym memberships take the BR-074
--- default. A trainer who no longer qualifies still sends the desk to S-03a. "Prijavi
--- odmah" at registration records the visit the same way, except that a new Grupni member
--- is checked in to their class today at any hour (D-106, migration 0058).
-select plan(27);
+-- sessions ask first (S-03f, D-109), then give the unpaid (yellow or red) result; two gym
+-- memberships take the BR-074 default. A trainer who no longer qualifies still sends the
+-- desk to S-03a. "Prijavi odmah" at registration records the visit the same way, except
+-- that a new Grupni member is checked in to their class today at any hour (D-106,
+-- migration 0058).
+select plan(30);
 
 -- Fixtures --------------------------------------------------------------------------
 insert into auth.users (id, email) values
@@ -169,10 +170,14 @@ select is(
    from (select begin_check_in('52525252-0000-0000-0000-000000020003') as r) s),
   'gym|false|1', 'D-102: on a day their class is not held, an unpaid gym visit too');
 select is(
+  (select (r ->> 'result') || '|' || (r ->> 'reason')
+   from (select begin_check_in('52525252-0000-0000-0000-000000020004') as r) s),
+  'renew|used_up', 'D-109: sessions used up at their class, S-03f asks first');
+select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
           || '|' || (r -> 'check_in' ->> 'unpaid_count')
-   from (select begin_check_in('52525252-0000-0000-0000-000000020004') as r) s),
-  'group|false|1', 'D-102: sessions used up, an unpaid group visit and the yellow dialog');
+   from (select check_in_unpaid('52525252-0000-0000-0000-000000020004', true) as r) s),
+  'group|false|1', 'D-102: [Neplaćeni dolazak]: an unpaid group visit and the yellow dialog');
 select is(
   (select (trainer_id = '52525252-0000-0000-0000-00000000d001') || '|'
           || (class_slot_id = '52525252-0000-0000-0000-00000000e101')
@@ -200,10 +205,14 @@ select is(
    from visits where member_id = '52525252-0000-0000-0000-000000020007'),
   'true|true|true', 'D-102 and BR-076: with the membership''s trainer, no class, marked manual');
 select is(
+  (select (r ->> 'result') || '|' || (r ->> 'reason')
+   from (select begin_check_in('52525252-0000-0000-0000-000000020008') as r) s),
+  'renew|used_up', 'D-109: Personalni sessions used up, S-03f asks first');
+select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
           || '|' || (r -> 'check_in' ->> 'unpaid_count')
-   from (select begin_check_in('52525252-0000-0000-0000-000000020008') as r) s),
-  'personal|false|1', 'D-102: sessions used up, an unpaid personal visit and the yellow dialog');
+   from (select check_in_unpaid('52525252-0000-0000-0000-000000020008', true) as r) s),
+  'personal|false|1', 'D-102: [Neplaćeni dolazak]: an unpaid personal visit and the yellow dialog');
 
 -- Two or more types: S-03a as before ----------------------------------------------------
 select is(begin_check_in('52525252-0000-0000-0000-000000020009') ->> 'result', 'choose',
@@ -232,9 +241,13 @@ select is(
   (select membership_id from visits where member_id = '52525252-0000-0000-0000-000000020012'),
   '52525252-0000-0000-0000-000000030015'::uuid, 'BR-074: the earliest-ending one is taken');
 select is(
+  (select (r ->> 'result') || '|' || (r ->> 'reason')
+   from (select begin_check_in('52525252-0000-0000-0000-000000020013') as r) s),
+  'renew|expired', 'D-109: a Grupni that has ended, S-03f asks first');
+select is(
   (select (r -> 'check_in' ->> 'visit_type') || '|' || (r -> 'check_in' ->> 'covered')
           || '|' || (r -> 'check_in' ->> 'unpaid_count')
-   from (select begin_check_in('52525252-0000-0000-0000-000000020013') as r) s),
+   from (select check_in_unpaid('52525252-0000-0000-0000-000000020013', true) as r) s),
   'group|false|1', 'D-106: with a Grupni that has ended, at their class an unpaid group visit');
 
 -- "Prijavi odmah" at registration (D-31) follows the same rule -----------------------------

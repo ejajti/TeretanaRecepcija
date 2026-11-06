@@ -26,11 +26,13 @@
 | P-14 | Current open shift totals: cash income, card income, till expenses, expected cash | ✓ | ✓ | own shift | BR-115, D-54 |
 | **Desk** | | | | | |
 | P-20 | Scan, check in, check out (incl. manual), see "U teretani" | ✓ | ✓ | ✓ | BR-070–081 |
+| P-20a | Turn an unpaid gym visit into a group visit ([Ipak grupni trening], no shift needed) | ✓ | ✓ | ✓ | BR-079b, D-110 |
 | P-21 | Register a member (card scan required) | ✓ | ✓ | ✓ | BR-033 |
 | P-22 | Search members, view profiles | ✓ | ✓ | ✓ | BR-044 |
 | P-23 | Edit member personal data | ✓ | ✓ | ✓ | BR-045 |
 | P-24 | Anonymize a member | ✓ | ✗ | ✗ | BR-046 |
 | P-24a | Pause a membership (7 days at most in total) and end a pause | ✓ | ✓ | ✓ | BR-056, D-100 |
+| P-24b | Change the sessions left on a membership (S-07 [Izmijeni broj termina]; no shift needed) | ✓ | ✗ | ✗ | BR-055a, D-111 |
 | P-25 | Sell or renew a membership at list price (open shift required) | ✓ | ✓ | ✓ | BR-092 |
 | P-26 | Enter the sessions and the gym's fixed part for Personalni, which is its amount (≥ minimum) | ✓ | ✓ | ✓ | BR-059, D-99, D-101 |
 | P-27 | Change a list-price amount | ✓ | ✗ | ✗ | BR-059 |

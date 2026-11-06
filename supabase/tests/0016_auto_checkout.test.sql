@@ -18,7 +18,7 @@ insert into shifts (id, gym_id, staff_id)
 values ('74747474-0000-0000-0000-00000000c101', '74747474-0000-0000-0000-00000000b001',
         '74747474-0000-0000-0000-00000000c001');
 
--- Members 1–8 hold no membership, so a check-in is one scan (an unpaid gym visit).
+-- Members 1–8 hold no membership, so a scan that checks in asks first (S-03f, D-109).
 insert into members (id, gym_id, member_number, first_name, last_name, phone, email,
                      date_of_birth, created_by)
 select ('74747474-0000-0000-0000-0000000200' || lpad(n::text, 2, '0'))::uuid,
@@ -128,8 +128,8 @@ select is(
   (select count(*)::int from visits where member_id = '74747474-0000-0000-0000-000000020001'),
   1, 'BR-072a: no new visit is recorded');
 select is(
-  (select scan_card('7416000001') ->> 'result'), 'checked_in',
-  'BR-072a: the next scan after that is a new visit');
+  (select scan_card('7416000001') ->> 'result'), 'renew',
+  'BR-072a: the next scan after that is a new check-in (D-109: S-03f first)');
 
 select is(
   (select (r ->> 'result') || '|' || (r ->> 'duration_seconds')
@@ -140,14 +140,14 @@ select ok(
   (select not auto_checkout from visits where id = '74747474-0000-0000-0000-000000040005'),
   'BR-072a: the nightly check-out becomes a real one too');
 
-select is(scan_card('7416000003') ->> 'result', 'checked_in',
-  'BR-072a: 70 min after the automatic check-out, a scan is a new visit');
+select is(scan_card('7416000003') ->> 'result', 'renew',
+  'BR-072a: 70 min after the automatic check-out, a scan is a new check-in');
 select is(
   (select checked_out_at from visits where id = '74747474-0000-0000-0000-000000040003'),
   now() - interval '70 minutes', 'BR-072a: and the old visit keeps its automatic check-out');
 
-select is(scan_card('7416000004') ->> 'result', 'checked_in',
-  'BR-072: after an ordinary check-out, a scan is a new visit');
+select is(scan_card('7416000004') ->> 'result', 'renew',
+  'BR-072: after an ordinary check-out, a scan is a new check-in');
 
 select is(scan_card('7416000002') ->> 'result', 'checked_out',
   'BR-072: a member still inside is checked out by the scan as before');

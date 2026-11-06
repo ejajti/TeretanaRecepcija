@@ -10,7 +10,7 @@ import {
 
 // M-07 "done when" (doc 09): E2E flows 2, 3 and 4 of doc 08 §10.
 //   2. scan an unassigned card → register → auto check-in → scan again → check-out;
-//   3. expired member → yellow, then red, dialog → renew → start date per E3;
+//   3. expired member → S-03f (D-109) → unpaid, then red → renew → start per E3;
 //   4. G+T group visit with trainer and slot.
 test.describe.configure({ mode: "serial" });
 
@@ -409,18 +409,24 @@ test("Flow 2: an empty card registers, checks in, and the next scan checks out",
   ).toBeVisible();
 });
 
-test("Flow 3 and E3: yellow, then red, then the renewal covers both visits", async ({
+test("Flow 3 and E3 (D-109): S-03f, an unpaid visit, then the renewal checks in", async ({
   page,
 }) => {
   await openReception(page);
 
-  // N = 1: the yellow dialog, which does not close by itself.
+  // D-109: S-03f asks first and records nothing; yellow with no unpaid visit yet.
   await scan(page, codes.expired);
-  await expect(page.locator("[data-result=yellow]")).toBeVisible();
+  const ask = page.locator("[data-result=renew-yellow]");
+  await expect(ask).toBeVisible();
   await expect(
-    page.getByText("Članarina nije važeća – neplaćeni dolazak."),
+    ask.getByText(
+      "Član još nije prijavljen. Produžiti članarinu ili upisati neplaćeni dolazak?",
+    ),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Zatvori" }).first().click();
+  await ask.getByRole("button", { name: "Neplaćeni dolazak" }).click();
+  await expect(
+    page.getByText("Upisan je neplaćeni dolazak: E2E Istekla Članarina."),
+  ).toBeVisible();
 
   // BR-080: [Odjavi] in "U teretani".
   await page
@@ -430,14 +436,29 @@ test("Flow 3 and E3: yellow, then red, then the renewal covers both visits", asy
     page.getByText("Trenutno nema nikoga u teretani."),
   ).toBeVisible();
 
-  // N = 2: the full-screen red dialog.
+  // With one unpaid visit already, S-03f is the full-screen red one. [Otkaži] records
+  // nothing and tells the desk the member has to scan again.
   await scan(page, codes.expired);
-  await expect(page.locator("[data-result=red]")).toBeVisible();
-  await expect(page.getByText("PAŽNJA: 2. neplaćeni dolazak!")).toBeVisible();
+  const red = page.locator("[data-result=renew-red]");
+  await expect(red).toBeVisible();
+  await expect(red.getByText("PAŽNJA: neplaćeni dolasci: 1")).toBeVisible();
+  await red.getByRole("button", { name: "Otkaži" }).click();
+  await expect(
+    page.getByText(
+      "Dolazak nije upisan: E2E Istekla Članarina mora ponovo skenirati karticu.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Trenutno nema nikoga u teretani."),
+  ).toBeVisible();
 
   // US-04.4 AC2: [Produži članarinu] opens S-08; BR-052 step 2 starts it at the first
-  // unpaid visit.
-  await page.getByRole("button", { name: "Produži članarinu" }).click();
+  // unpaid visit, and the sale checks the member in (D-109).
+  await scan(page, codes.expired);
+  await page
+    .locator("[data-result=renew-red]")
+    .getByRole("button", { name: "Produži članarinu" })
+    .click();
   const sell = page.getByRole("dialog");
   await sell.getByLabel("Vrsta članarine").selectOption(mjesecnaId);
   await expect(
@@ -446,6 +467,7 @@ test("Flow 3 and E3: yellow, then red, then the renewal covers both visits", asy
   await sell.getByText("Gotovina", { exact: true }).click();
   await sell.getByRole("button", { name: "Naplati i sačuvaj" }).click();
   await expect(page.getByText("Članarina sačuvana.")).toBeVisible();
+  await expect(page.locator("[data-result=covered]")).toBeVisible();
 
   const admin = adminClient();
   const { data: renewal } = await admin
@@ -459,10 +481,12 @@ test("Flow 3 and E3: yellow, then red, then the renewal covers both visits", asy
     .from("visits")
     .select("membership_id, is_unpaid")
     .eq("member_id", members.expired)
+    .order("checked_in_at")
     .returns<{ membership_id: string | null; is_unpaid: boolean }[]>();
-  expect(visits).toHaveLength(2);
-  for (const visit of visits ?? [])
-    expect(visit).toEqual({ membership_id: renewal?.id, is_unpaid: true });
+  expect(visits).toEqual([
+    { membership_id: renewal?.id, is_unpaid: true },
+    { membership_id: renewal?.id, is_unpaid: false },
+  ]);
 });
 
 test("Flow 4: a G+T group visit with its trainer and the class starting now", async ({

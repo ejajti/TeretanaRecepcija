@@ -1,6 +1,6 @@
 -- M-07: check-in and check-out. Every row of the BR-070 table, the worked examples E3,
 -- E6, E7 and E8 end to end, and BR-071 to BR-081.
-select plan(53);
+select plan(55);
 
 -- Fixtures --------------------------------------------------------------------------
 insert into auth.users (id, email) values
@@ -299,15 +299,22 @@ select is(
   null, 'BR-077: a gym visit has no trainer');
 
 -- E3 end to end: two unpaid visits, then the renewal links them ----------------------------------
+-- D-109: the scan asks first (S-03f); [Neplaćeni dolazak] records the visit.
 select is(
-  (scan_card('7700000006') -> 'check_in' ->> 'unpaid_count')::int,
+  (select (r ->> 'result') || '|' || (r ->> 'reason') || '|' || (r ->> 'unpaid_count')
+   from (select scan_card('7700000006') as r) s),
+  'renew|expired|0', 'D-109: an expired membership asks first and records nothing');
+select is(
+  (check_in_unpaid('77777777-0000-0000-0000-000000020006', false) -> 'check_in' ->> 'unpaid_count')::int,
   1, 'E3: the first unpaid visit is N = 1 (yellow)');
 select lives_ok(
   $$select check_out((select id from visits where member_id = '77777777-0000-0000-0000-000000020006'
                       and checked_out_at is null), true)$$,
   'E3: checked out');
+select is((scan_card('7700000006') ->> 'unpaid_count')::int, 1,
+  'D-109: the next scan asks again and says one unpaid visit is open');
 select is(
-  (scan_card('7700000006') -> 'check_in' ->> 'unpaid_count')::int,
+  (check_in_unpaid('77777777-0000-0000-0000-000000020006', false) -> 'check_in' ->> 'unpaid_count')::int,
   2, 'E3: the second is N = 2 (red)');
 select is(unlinked_unpaid_count('77777777-0000-0000-0000-000000020006'), 2,
   'BR-079: unlinked_unpaid_count agrees');

@@ -494,7 +494,12 @@ test("MSHIP-14: the visit counter runs down, then Iskorištena and an unpaid vis
     .click({ timeout: 3_000 })
     .catch(() => {});
   await scan();
-  await expect(page.locator("[data-result=yellow]")).toBeVisible();
+  // D-109: every visit used, so S-03f asks before anything is recorded.
+  const ask = page.locator("[data-result=renew-yellow]");
+  await expect(ask).toBeVisible();
+  await expect(ask).toContainText(
+    "Iskorišteni su svi termini članarine „E2E Mjesečna 12 termina“.",
+  );
 });
 
 test("MSHIP-17: a new plan price leaves earlier sales alone", async ({

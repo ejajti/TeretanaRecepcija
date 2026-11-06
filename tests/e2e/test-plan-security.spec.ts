@@ -436,7 +436,14 @@ test("JOB-01: the nightly job checks out, closes as Automatski, and runs once a 
   const desk = await watched(browser, staff.ana);
   await desk.page.goto(`/members/${memberId}`);
   await desk.page.getByRole("button", { name: "Ručna prijava" }).click();
-  await expect(desk.page.locator("[data-result=yellow]")).toBeVisible();
+  // D-109: S-03f first; [Neplaćeni dolazak] records the visit.
+  await desk.page
+    .locator("[data-result=renew-yellow]")
+    .getByRole("button", { name: "Neplaćeni dolazak" })
+    .click();
+  await expect(
+    desk.page.getByText(/^Upisan je neplaćeni dolazak:/),
+  ).toBeVisible();
   await desk.page.context().close();
   const close = gymClock(30);
   test.skip(

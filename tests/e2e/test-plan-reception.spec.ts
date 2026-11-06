@@ -408,32 +408,40 @@ test("REC-03: a G+T member picks the visit type; Grupni proposes trainer and cla
   expect(count).toBe(0);
 });
 
-test("REC-06: the first unpaid visit is yellow, stays open, and is recorded", async ({
+test("REC-06: the first unpaid visit asks first (S-03f), yellow, and is recorded on choice", async ({
   page,
 }) => {
   await openReception(page);
   await scan(page, card.bozo);
-  const result = page.locator("[data-result=yellow]");
+  const result = page.locator("[data-result=renew-yellow]");
   await expect(result).toBeVisible();
   await expect(result).toContainText("E2E Božo Božović");
-  await expect(result).toContainText(
-    "Članarina nije važeća – neplaćeni dolazak.",
-  );
+  await expect(result).toContainText("Član nema važeću članarinu.");
   await expect(
     result.getByRole("button", { name: "Produži članarinu" }),
   ).toBeVisible();
   await expect(
-    result.getByRole("button", { name: "Zatvori" }).first(),
+    result.getByRole("button", { name: "Otkaži" }).first(),
   ).toBeVisible();
   await page.waitForTimeout(7_000);
   await expect(result).toBeVisible();
-  const { data } = await adminClient()
+  // D-109: nothing is recorded until the desk chooses.
+  const admin = adminClient();
+  const { count } = await admin
+    .from("visits")
+    .select("id", { count: "exact", head: true })
+    .eq("member_id", member.bozo);
+  expect(count).toBe(0);
+  await result.getByRole("button", { name: "Neplaćeni dolazak" }).click();
+  await expect(
+    page.getByText("Upisan je neplaćeni dolazak: E2E Božo Božović."),
+  ).toBeVisible();
+  const { data } = await admin
     .from("visits")
     .select("is_unpaid, membership_id")
     .eq("member_id", member.bozo)
     .returns<{ is_unpaid: boolean; membership_id: string | null }[]>();
   expect(data).toEqual([{ is_unpaid: true, membership_id: null }]);
-  await result.getByRole("button", { name: "Zatvori" }).first().click();
 
   await page.goto(`/members/${member.bozo}?tab=dolasci`);
   await expect(page.getByText("Neplaćeno").first()).toBeVisible();
@@ -463,16 +471,16 @@ test("REC-08 and REC-07: [Ne] keeps the member in; the second unpaid visit is re
     page.getByText(/^Odjavljen\/a: E2E Božo Božović – 0h 0min$/),
   ).toBeVisible();
 
-  // REC-07 step 2: the next check-in is the second unpaid visit.
+  // REC-07 step 2: the next check-in would be the second unpaid visit: S-03f is red.
   await scan(page, card.bozo);
-  const red = page.locator("[data-result=red]");
+  const red = page.locator("[data-result=renew-red]");
   await expect(red).toBeVisible();
-  await expect(red).toContainText("PAŽNJA: 2. neplaćeni dolazak!");
+  await expect(red).toContainText("PAŽNJA: neplaćeni dolasci: 1");
   await expect(
     red.getByRole("button", { name: "Produži članarinu" }),
   ).toBeVisible();
   await expect(
-    red.getByRole("button", { name: "Zatvori" }).first(),
+    red.getByRole("button", { name: "Otkaži" }).first(),
   ).toBeVisible();
   const box = await red.boundingBox();
   const viewport = page.viewportSize()!;
@@ -481,7 +489,10 @@ test("REC-08 and REC-07: [Ne] keeps the member in; the second unpaid visit is re
   );
   expect(box!.width).toBeGreaterThanOrEqual(viewport.width - 2);
   expect(box!.height).toBeGreaterThanOrEqual(viewport.height - 2);
-  await red.getByRole("button", { name: "Zatvori" }).first().click();
+  await red.getByRole("button", { name: "Neplaćeni dolazak" }).click();
+  await expect(
+    page.getByText("Upisan je neplaćeni dolazak: E2E Božo Božović."),
+  ).toBeVisible();
 });
 
 test("REC-08: a scan after the guard checks out with the real duration", async ({
@@ -576,9 +587,9 @@ test("REC-22: out after 1 h 30 min by itself, and a scan soon after is the leavi
     auto_checkout: false,
     checked_out_by: staff.receptionist.id,
   });
-  expect(Date.now() - new Date(visits![0].checked_out_at).getTime()).toBeLessThan(
-    60_000,
-  );
+  expect(
+    Date.now() - new Date(visits![0].checked_out_at).getTime(),
+  ).toBeLessThan(60_000);
 });
 
 test("REC-11: unknown, voided and malformed cards give a status line, no dialog", async ({
