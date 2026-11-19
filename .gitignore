@@ -15,3 +15,7 @@ supabase/.branches/
 .npm-cache/
 .playwright/
 *.log
+UCENJE*.md
+# Local data dumps and client screenshots hold personal data: keep them outside the repo
+kp-test-podaci-backup*.json
+BITNO TERETANA/
