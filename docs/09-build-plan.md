@@ -230,10 +230,10 @@ Do not start the next milestone until he approves.
 ## Maintenance (after release)
 Work found while the gym uses the app. It follows the same steps as a milestone, except that the full E2E suite is never run against the live database: only the specs for what changed, each with its own test gym.
 
-### Dependency security update: `next` (found 26.10.2026, narrowed 31.10.2026)
+### Dependency security update: `next` (found 26.10.2026, narrowed 31.10.2026, target raised to 16.4.6 on 19.11.2026)
 GitHub Dependabot reports 22 alerts on `main`; on 31.10.2026 `npm audit` listed 30 packages (1 critical, 4 high, 25 moderate). Each was checked against this app, and only the ones that reach it are fixed.
 
-**Fixed by this task.** Both are in `next` 16.3.5 and are fixed in 16.4.3:
+**Fixed by this task.** Both are in `next` 16.3.5 and are fixed in 16.4.3. The task pins 16.4.6, because two later `use cache` advisories (≤ 16.4.4, not reached by this app) would keep `next` listed in `npm audit` on 16.4.3:
 
 | Advisory | Severity | Why it reaches this app |
 |---|---|---|
@@ -253,7 +253,7 @@ The update also closes every other `next` advisory (`next/og`, `use cache`, SSG/
 | `minimatch`, `glob` (through `eslint` and `archiver`) | Denial of service through glob patterns | `eslint` is a development tool; `lib/backup.ts` uses `archiver` without glob. `npm audit` offers only downgrades (`eslint` 4, `archiver` 4), which are not applied |
 
 **Tasks:**
-- Pin `next`, `@next/env` and `eslint-config-next` to `16.4.3` in `package.json` (doc 08 §9; `@next/env` and `eslint-config-next` follow `next`) and update `package-lock.json`. No other package changes, and `npm audit fix` is not run.
+- Pin `next`, `@next/env` and `eslint-config-next` to `16.4.6` in `package.json` (doc 08 §9; `@next/env` and `eslint-config-next` follow `next`) and update `package-lock.json`. No other package changes (`sharp` 0.35.5 comes with `next` itself), and `npm audit fix` is not run.
 - Run `npm audit` again and confirm `next` is no longer listed.
 
 **When:** after the gym closes. A change to `package.json` starts a new production build on Vercel (D-87).
